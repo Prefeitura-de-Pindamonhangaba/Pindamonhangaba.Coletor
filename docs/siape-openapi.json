@@ -1,0 +1,1784 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "GCC - API de Integrações para prestação de contas do 3º setor",
+    "description": "![Logo-geosiap](https://geosiap.net/assets/logo.png)\n\nAPI para integração externa com o sistema GCC (Gestão de Convênios e Contratos).\n\n## Autenticação\nTodos os endpoints (exceto `/integracoes/login`) exigem um token JWT no header `Authorization`:\n```\nAuthorization: Bearer <token>\n```\nO token é obtido via `POST /integracoes/login` e expira em **1 hora**.\n\n## Idempotência\n| Endpoint             | Comportamento em duplicidade |\n|----------------------|------------------------------|\n| Contratos            | Erro por contrato duplicado  |\n| Documentos fiscais   | Erro por documento duplicado |\n| Pagamentos           | Erro global por `id_importacao` |\n| Funcionários         | `find_or_create` - atualiza sem erro |\n| Servidores cedidos   | `find_or_create` - atualiza sem erro |\n\nErros em registros individuais não interrompem os demais. Cada registro é processado em transação separada.\n",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Equipe GCC"
+    }
+  },
+  "servers": [
+    {
+      "url": "/gcc-web/api/integracoes",
+      "description": "Ambiente de produção"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Autenticação",
+      "description": "Geração de token de acesso"
+    },
+    {
+      "name": "Contratos",
+      "description": "Importação de contratos"
+    },
+    {
+      "name": "Documentos Fiscais",
+      "description": "Importação de documentos fiscais"
+    },
+    {
+      "name": "Pagamentos",
+      "description": "Importação de pagamentos"
+    },
+    {
+      "name": "Funcionários",
+      "description": "Importação de funcionários e remunerações"
+    },
+    {
+      "name": "Servidores Cedidos",
+      "description": "Importação de servidores cedidos e remunerações"
+    },
+    {
+      "name": "Tabelas de Referência",
+      "description": "Endpoints de consulta para valores de campos controlados"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/login": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Gera token de acesso",
+        "description": "Autentica o sistema integrador e retorna um token JWT válido por 1 hora.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "example": {
+                "gcc_key": "XSekHOCOdoDSkgF5qRSUoNJNN1I8n/oPLgGLaVaWtYwzOk1..."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token gerado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                },
+                "example": {
+                  "token": "4hD/WGF+4TR9AXenqiDHiNt9w4n90YoucAckJsElKGNsRYu..."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Credenciais inválidas ou expiradas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorSimple"
+                },
+                "examples": {
+                  "invalida": {
+                    "value": {
+                      "error": "Chave de acesso inválida"
+                    }
+                  },
+                  "expirada": {
+                    "value": {
+                      "error": "Chave de acesso expirada"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pc3s/contratos": {
+      "post": {
+        "tags": [
+          "Contratos"
+        ],
+        "summary": "Importa contratos",
+        "description": "Importa uma lista de contratos para o repasse identificado por `codigo_ajuste`.\nContratos já importados geram erro individual sem interromper os demais.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportarContratosRequest"
+              },
+              "example": {
+                "codigo_ajuste": "2021000000008274",
+                "contratos": [
+                  {
+                    "nr_contrato": "001/2024",
+                    "dt_assinatura": "2024-03-01",
+                    "dt_vigencia_inicial": "2024-03-01",
+                    "dt_vigencia_final": "2025-02-28",
+                    "objeto": "Prestação de serviços de assessoria técnica",
+                    "tp_vigencia": 1,
+                    "tp_criterio_selecao": 10,
+                    "ds_criterio_selecao": null,
+                    "artigo_regulamento": "Art. 30",
+                    "tp_valor": 1,
+                    "vl_contrato": 120000,
+                    "id_importacao": 1,
+                    "credor": {
+                      "nr_documento": "12345678000195",
+                      "nome": "Empresa Exemplo LTDA"
+                    },
+                    "natureza_contratacao": [
+                      {
+                        "tp_natureza_contratacao": 1,
+                        "ds_natureza_contratacao": null
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Importação processada (pode conter erros parciais)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportarContratosResponse"
+                },
+                "examples": {
+                  "sucesso": {
+                    "value": {
+                      "importados": 1,
+                      "erros": 0,
+                      "contratos_importados": [
+                        {
+                          "id_importacao": 1,
+                          "nr_contrato": "001/2024",
+                          "id_pc3s_contrato": 4521
+                        }
+                      ],
+                      "errors": []
+                    }
+                  },
+                  "parcial": {
+                    "value": {
+                      "importados": 1,
+                      "erros": 1,
+                      "contratos_importados": [
+                        {
+                          "id_importacao": 1,
+                          "nr_contrato": "001/2024",
+                          "id_pc3s_contrato": 4521
+                        }
+                      ],
+                      "errors": [
+                        {
+                          "id_importacao": 2,
+                          "nr_contrato": "002/2024",
+                          "error": "Contrato '002/2024' já foi importado para este credor neste repasse"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/pc3s/documentos_fiscais": {
+      "post": {
+        "tags": [
+          "Documentos Fiscais"
+        ],
+        "summary": "Importa documentos fiscais",
+        "description": "Importa uma lista de documentos fiscais (NF, RPA, etc.) para o repasse.\nDocumentos já importados geram erro individual sem interromper os demais.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportarDocumentosFiscaisRequest"
+              },
+              "example": {
+                "codigo_ajuste": "2021000000008274",
+                "documentos_fiscais": [
+                  {
+                    "nr_documento_fiscal": "NF-001234",
+                    "ds_documento_fiscal": "Serviços de assessoria - março/2025",
+                    "dt_emissao": "2025-03-31",
+                    "uf": "SP",
+                    "vl_bruto": 10000,
+                    "vl_encargo": 500,
+                    "tp_categoria_despesa": "30",
+                    "ds_categoria_despesa": null,
+                    "proveniente_rateio": false,
+                    "vl_rateio_percentual": null,
+                    "id_importacao": 1,
+                    "credor": {
+                      "nr_documento": "12345678000195",
+                      "nome": "Empresa Exemplo LTDA"
+                    },
+                    "contrato": {
+                      "nr_contrato": "001/2024",
+                      "dt_assinatura": "2024-03-01",
+                      "credor": {
+                        "nr_documento": "12345678000195",
+                        "nome": "Empresa Exemplo LTDA"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Importação processada (pode conter erros parciais)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportarDocumentosFiscaisResponse"
+                },
+                "example": {
+                  "importados": 1,
+                  "erros": 0,
+                  "documentos_importados": [
+                    {
+                      "id_importacao": 1,
+                      "nr_documento_fiscal": "NF-001234",
+                      "id_pc3s_documento_fiscal": 8832
+                    }
+                  ],
+                  "errors": []
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/pc3s/pagamentos": {
+      "post": {
+        "tags": [
+          "Pagamentos"
+        ],
+        "summary": "Importa pagamentos",
+        "description": "Importa uma lista de pagamentos para o repasse.\n`id_importacao` é obrigatório e não permite duplicidade — envio duplicado gera erro global.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportarPagamentosRequest"
+              },
+              "examples": {
+                "banco": {
+                  "summary": "Pagamento via transferência bancária",
+                  "value": {
+                    "codigo_ajuste": "2021000000008274",
+                    "pagamentos": [
+                      {
+                        "folha_pagamento": false,
+                        "dt_pagamento": "2025-03-28",
+                        "cd_fonte_recurso": "01",
+                        "tp_meio_pagamento": 1,
+                        "nr_transacao": "TED-20250328-001",
+                        "vl_pagamento": 10500,
+                        "id_importacao": 1,
+                        "documento_fiscal": {
+                          "nr_documento_fiscal": "NF-001234",
+                          "nr_documento_credor": "12345678000195"
+                        },
+                        "conta_bancaria": {
+                          "cd_banco": "341",
+                          "cd_agencia": 1234,
+                          "cd_conta_corrente": "123456-7",
+                          "ds_conta_corrente": "Conta corrente principal"
+                        }
+                      }
+                    ]
+                  }
+                },
+                "fundoFixo": {
+                  "summary": "Folha de pagamento via fundo fixo",
+                  "value": {
+                    "codigo_ajuste": "2021000000008274",
+                    "pagamentos": [
+                      {
+                        "folha_pagamento": true,
+                        "dt_pagamento": "2025-03-05",
+                        "cd_fonte_recurso": "01",
+                        "tp_meio_pagamento": 2,
+                        "nr_transacao": null,
+                        "vl_pagamento": 45000,
+                        "id_importacao": 2
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Importação processada (pode conter erros parciais)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportarPagamentosResponse"
+                },
+                "example": {
+                  "importados": 1,
+                  "erros": 0,
+                  "pagamentos_importados": [
+                    {
+                      "id_importacao": 1
+                    }
+                  ],
+                  "errors": []
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/pc3s/funcionarios": {
+      "post": {
+        "tags": [
+          "Funcionários"
+        ],
+        "summary": "Importa funcionários e remunerações",
+        "description": "Importa funcionários e seus históricos de remunerações.\nSe o funcionário já existir (pelo CPF), o registro é atualizado sem gerar erro (`find_or_create`).\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportarFuncionariosRequest"
+              },
+              "example": {
+                "codigo_ajuste": "2021000000008274",
+                "funcionarios": [
+                  {
+                    "cpf": "85301367480",
+                    "nome": "Ana Paula Ferreira Santos",
+                    "cbo": "212405",
+                    "cns": null,
+                    "dt_admissao": "2018-03-01",
+                    "dt_demissao": null,
+                    "salario_contratual": [
+                      {
+                        "dt_salario": "2018-03-01",
+                        "vl_salario": 3200
+                      },
+                      {
+                        "dt_salario": "2024-01-01",
+                        "vl_salario": 4500
+                      }
+                    ],
+                    "remuneracoes": [
+                      {
+                        "ano": 2025,
+                        "mes": 1,
+                        "carga_horaria": 40,
+                        "vl_remuneracao": 4500,
+                        "id_importacao": 1
+                      },
+                      {
+                        "ano": 2025,
+                        "mes": 2,
+                        "carga_horaria": 40,
+                        "vl_remuneracao": 4500,
+                        "id_importacao": 2
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Importação processada (pode conter erros parciais)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportarFuncionariosResponse"
+                },
+                "example": {
+                  "importados": 1,
+                  "erros": 0,
+                  "remuneracoes_importadas": [
+                    {
+                      "ano": 2025,
+                      "mes": 1,
+                      "carga_horaria": 40,
+                      "vl_remuneracao": 4500,
+                      "id_importacao": 1
+                    },
+                    {
+                      "ano": 2025,
+                      "mes": 2,
+                      "carga_horaria": 40,
+                      "vl_remuneracao": 4500,
+                      "id_importacao": 2
+                    }
+                  ],
+                  "errors": []
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/pc3s/servidores_cedidos": {
+      "post": {
+        "tags": [
+          "Servidores Cedidos"
+        ],
+        "summary": "Importa servidores cedidos e remunerações",
+        "description": "Importa servidores cedidos e seus históricos de remunerações.\nSe o servidor já existir (pelo CPF), o registro é atualizado sem gerar erro (`find_or_create`).\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportarServidoresCedidosRequest"
+              },
+              "example": {
+                "codigo_ajuste": "2021000000008274",
+                "servidores_cedidos": [
+                  {
+                    "cpf": "85301367480",
+                    "nome": "Ana Paula Ferreira Santos",
+                    "tp_onus_pagamento": 1,
+                    "dt_inicio_cessao": "2022-01-01",
+                    "dt_termino_cessao": "2025-12-31",
+                    "cargo_publico_ocupado": "Analista de Sistemas",
+                    "funcao_desempenhada": "Desenvolvimento de Software",
+                    "remuneracoes": [
+                      {
+                        "ano": 2025,
+                        "mes": 1,
+                        "carga_horaria": 40,
+                        "vl_remuneracao": 6800,
+                        "id_importacao": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Importação processada (pode conter erros parciais)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportarServidoresCedidosResponse"
+                },
+                "example": {
+                  "importados": 1,
+                  "erros": 0,
+                  "remuneracoes_importadas": [
+                    {
+                      "ano": 2025,
+                      "mes": 1,
+                      "carga_horaria": 40,
+                      "vl_remuneracao": 6800,
+                      "id_importacao": 1
+                    }
+                  ],
+                  "errors": []
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/UnprocessableEntity"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/pc3s/tp_valor_contrato": {
+      "get": {
+        "tags": [
+          "Tabelas de Referência"
+        ],
+        "summary": "Lista tipos de valor de contrato",
+        "description": "Retorna os valores válidos para o campo `tp_valor` em contratos.",
+        "responses": {
+          "200": {
+            "description": "Lista de tipos de valor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipoSimples"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "descricao": "Global"
+                  },
+                  {
+                    "id": 2,
+                    "descricao": "Unitário"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/pc3s/tp_categoria_despesa": {
+      "get": {
+        "tags": [
+          "Tabelas de Referência"
+        ],
+        "summary": "Lista categorias de despesa",
+        "description": "Retorna os valores válidos para o campo `tp_categoria_despesa` em documentos fiscais.",
+        "responses": {
+          "200": {
+            "description": "Lista de categorias de despesa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipoComObriga"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 30,
+                    "descricao": "Serviços de Terceiros",
+                    "obriga_descricao": false
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/pc3s/tp_criterio_selecao": {
+      "get": {
+        "tags": [
+          "Tabelas de Referência"
+        ],
+        "summary": "Lista critérios de seleção",
+        "description": "Retorna os valores válidos para o campo `tp_criterio_selecao` em contratos.",
+        "responses": {
+          "200": {
+            "description": "Lista de critérios de seleção",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipoComExige"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 10,
+                    "descricao": "Dispensa de Licitação",
+                    "exige_descricao": false
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/pc3s/tp_natureza_contratacao": {
+      "get": {
+        "tags": [
+          "Tabelas de Referência"
+        ],
+        "summary": "Lista naturezas de contratação",
+        "description": "Retorna os valores válidos para o campo `tp_natureza_contratacao` em contratos.",
+        "responses": {
+          "200": {
+            "description": "Lista de naturezas de contratação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipoComExige"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "descricao": "Obras e Serviços de Engenharia",
+                    "exige_descricao": false
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/pc3s/fonte_recurso": {
+      "get": {
+        "tags": [
+          "Tabelas de Referência"
+        ],
+        "summary": "Lista fontes de recurso",
+        "description": "Retorna as fontes de recurso válidas para o campo `cd_fonte_recurso` em pagamentos. Os valores variam conforme o estado da entidade concedente.",
+        "responses": {
+          "200": {
+            "description": "Lista de fontes de recurso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipoSimplesString"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "01",
+                    "descricao": "Tesouro do Estado"
+                  },
+                  {
+                    "id": "02",
+                    "descricao": "Recursos Próprios"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/pc3s/tp_meio_pagamento": {
+      "get": {
+        "tags": [
+          "Tabelas de Referência"
+        ],
+        "summary": "Lista meios de pagamento",
+        "description": "Retorna os valores válidos para o campo `tp_meio_pagamento` em pagamentos.",
+        "responses": {
+          "200": {
+            "description": "Lista de meios de pagamento",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipoSimples"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "descricao": "Banco"
+                  },
+                  {
+                    "id": 2,
+                    "descricao": "Fundo fixo"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/pc3s/tp_vigencia_contrato": {
+      "get": {
+        "tags": [
+          "Tabelas de Referência"
+        ],
+        "summary": "Lista tipos de vigência de contrato",
+        "description": "Retorna os valores válidos para o campo `tp_vigencia` em contratos.",
+        "responses": {
+          "200": {
+            "description": "Lista de tipos de vigência",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TipoSimples"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "descricao": "Pré-estabelecida"
+                  },
+                  {
+                    "id": 2,
+                    "descricao": "Indeterminada"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token JWT obtido via `POST /integracoes/login`"
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Token ausente, inválido ou expirado",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorSimple"
+            },
+            "examples": {
+              "ausente": {
+                "value": {
+                  "error": "Token de integração ausente"
+                }
+              },
+              "expirado": {
+                "value": {
+                  "error": "Token de integração expirado"
+                }
+              },
+              "invalido": {
+                "value": {
+                  "error": "Token de integração inválido"
+                }
+              }
+            }
+          }
+        }
+      },
+      "UnprocessableEntity": {
+        "description": "Parâmetros inválidos ou ausentes",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorSimple"
+            },
+            "examples": {
+              "codigoAjuste": {
+                "value": {
+                  "error": "codigo_ajuste é obrigatório"
+                }
+              },
+              "repasseNaoEncontrado": {
+                "value": {
+                  "error": "Repasse não encontrado para o código de ajuste '999'"
+                }
+              },
+              "camposObrigatorios": {
+                "value": {
+                  "error": "Campo 'cpf' é obrigatório; Campo 'cbo' é obrigatório"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "Erro interno no servidor",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorDetalhado"
+            },
+            "example": {
+              "error": "Erro interno ao importar funcionários",
+              "detail": "..."
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "gcc_key",
+          "cnpj_concedente",
+          "cnpj_beneficiario"
+        ],
+        "properties": {
+          "gcc_key": {
+            "type": "string",
+            "description": "Chave de integração criptografada (AES) criada no contas e deve ser específica para o gcc"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token JWT criptografado — válido por 1 hora"
+          }
+        }
+      },
+      "Credor": {
+        "type": "object",
+        "required": [
+          "nr_documento",
+          "nome"
+        ],
+        "properties": {
+          "nr_documento": {
+            "type": "string",
+            "description": "CPF (11 dígitos) ou CNPJ (14 dígitos), somente números",
+            "example": "12345678000195"
+          },
+          "nome": {
+            "type": "string",
+            "description": "Nome completo ou razão social",
+            "example": "Empresa Exemplo LTDA"
+          }
+        }
+      },
+      "Remuneracao": {
+        "type": "object",
+        "required": [
+          "ano",
+          "mes",
+          "carga_horaria",
+          "vl_remuneracao"
+        ],
+        "properties": {
+          "ano": {
+            "type": "integer",
+            "description": "Ano de competência",
+            "example": 2025
+          },
+          "mes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12,
+            "description": "Mês de competência",
+            "example": 3
+          },
+          "carga_horaria": {
+            "type": "integer",
+            "description": "Carga horária semanal (ex. 40, 44)",
+            "example": 40
+          },
+          "vl_remuneracao": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor da remuneração bruta",
+            "example": 4500
+          },
+          "id_importacao": {
+            "type": "integer",
+            "description": "Identificador único na origem (usado para rastreabilidade)",
+            "example": 1
+          }
+        }
+      },
+      "ErrorSimple": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorDetalhado": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "TipoSimples": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "descricao": {
+            "type": "string"
+          }
+        }
+      },
+      "TipoSimplesString": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          }
+        }
+      },
+      "TipoComExige": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "exige_descricao": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TipoComObriga": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "obriga_descricao": {
+            "type": "boolean"
+          }
+        }
+      },
+      "NaturezaContratacao": {
+        "type": "object",
+        "required": [
+          "tp_natureza_contratacao"
+        ],
+        "properties": {
+          "tp_natureza_contratacao": {
+            "type": "integer",
+            "description": "Código TCE da natureza de contratação (ver `/integracoes/pc3s/tp_natureza_contratacao`)"
+          },
+          "ds_natureza_contratacao": {
+            "type": "string",
+            "nullable": true,
+            "description": "Obrigatório quando a natureza exige descrição (`exige_descricao = true`)"
+          }
+        }
+      },
+      "Contrato": {
+        "type": "object",
+        "required": [
+          "nr_contrato",
+          "dt_assinatura",
+          "dt_vigencia_inicial",
+          "objeto",
+          "tp_vigencia",
+          "tp_criterio_selecao",
+          "artigo_regulamento",
+          "tp_valor",
+          "vl_contrato",
+          "id_importacao",
+          "credor",
+          "natureza_contratacao"
+        ],
+        "properties": {
+          "nr_contrato": {
+            "type": "string",
+            "description": "Número do contrato"
+          },
+          "dt_assinatura": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de assinatura (YYYY-MM-DD)"
+          },
+          "dt_vigencia_inicial": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de início de vigência (YYYY-MM-DD)"
+          },
+          "dt_vigencia_final": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Obrigatório quando `tp_vigencia = 1` (pré-estabelecida)"
+          },
+          "objeto": {
+            "type": "string",
+            "description": "Descrição do objeto do contrato"
+          },
+          "tp_vigencia": {
+            "type": "integer",
+            "description": "ID do tipo de vigência do contrato (ver `/integracoes/pc3s/tp_vigencia_contrato`)"
+          },
+          "tp_criterio_selecao": {
+            "type": "integer",
+            "description": "Código TCE do critério de seleção (ver `/integracoes/pc3s/tp_criterio_selecao`)"
+          },
+          "ds_criterio_selecao": {
+            "type": "string",
+            "nullable": true,
+            "description": "Obrigatório quando o critério exige descrição (`exige_descricao = true`)"
+          },
+          "artigo_regulamento": {
+            "type": "string",
+            "description": "Artigo do regulamento aplicável"
+          },
+          "tp_valor": {
+            "type": "integer",
+            "description": "ID do tipo de valor do contrato (ver `/integracoes/pc3s/tp_valor_contrato`)"
+          },
+          "vl_contrato": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor total do contrato (> 0)"
+          },
+          "id_importacao": {
+            "type": "integer",
+            "description": "Identificador único na origem"
+          },
+          "credor": {
+            "$ref": "#/components/schemas/Credor"
+          },
+          "natureza_contratacao": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/NaturezaContratacao"
+            }
+          }
+        }
+      },
+      "ImportarContratosRequest": {
+        "type": "object",
+        "required": [
+          "codigo_ajuste",
+          "contratos"
+        ],
+        "properties": {
+          "codigo_ajuste": {
+            "type": "string",
+            "description": "Código do repasse (nr_ato_juridico_tce)"
+          },
+          "contratos": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Contrato"
+            }
+          }
+        }
+      },
+      "ImportarContratosResponse": {
+        "type": "object",
+        "properties": {
+          "importados": {
+            "type": "integer"
+          },
+          "erros": {
+            "type": "integer"
+          },
+          "contratos_importados": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id_importacao": {
+                  "type": "integer"
+                },
+                "nr_contrato": {
+                  "type": "string"
+                },
+                "id_pc3s_contrato": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id_importacao": {
+                  "type": "integer"
+                },
+                "nr_contrato": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ContratoVinculo": {
+        "type": "object",
+        "required": [
+          "nr_contrato",
+          "dt_assinatura",
+          "credor"
+        ],
+        "description": "Vínculo a um contrato já cadastrado",
+        "properties": {
+          "nr_contrato": {
+            "type": "string"
+          },
+          "dt_assinatura": {
+            "type": "string",
+            "format": "date"
+          },
+          "credor": {
+            "$ref": "#/components/schemas/Credor"
+          }
+        }
+      },
+      "DocumentoFiscal": {
+        "type": "object",
+        "required": [
+          "nr_documento_fiscal",
+          "ds_documento_fiscal",
+          "dt_emissao",
+          "uf",
+          "vl_bruto",
+          "tp_categoria_despesa",
+          "proveniente_rateio",
+          "id_importacao",
+          "credor"
+        ],
+        "properties": {
+          "nr_documento_fiscal": {
+            "type": "string",
+            "description": "Número do documento fiscal (NF, RPA, etc.)"
+          },
+          "ds_documento_fiscal": {
+            "type": "string",
+            "description": "Descrição do documento fiscal"
+          },
+          "dt_emissao": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de emissão (YYYY-MM-DD)"
+          },
+          "uf": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 2,
+            "description": "Sigla do estado emissor (ex. \"SP\", \"RJ\")"
+          },
+          "vl_bruto": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor bruto do documento (> 0)"
+          },
+          "vl_encargo": {
+            "type": "number",
+            "format": "decimal",
+            "default": 0,
+            "description": "Valor de encargos (padrão 0)"
+          },
+          "tp_categoria_despesa": {
+            "type": "string",
+            "description": "Código TCE da categoria de despesa (ver `/integracoes/pc3s/tp_categoria_despesa`)"
+          },
+          "ds_categoria_despesa": {
+            "type": "string",
+            "nullable": true,
+            "description": "Obrigatório quando a categoria exige descrição (`obriga_descricao = true`)"
+          },
+          "proveniente_rateio": {
+            "type": "boolean",
+            "description": "`true` se o documento é proveniente de rateio"
+          },
+          "vl_rateio_percentual": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true,
+            "description": "Obrigatório e > 0 quando `proveniente_rateio = true`"
+          },
+          "id_importacao": {
+            "type": "integer",
+            "description": "Identificador único na origem"
+          },
+          "credor": {
+            "$ref": "#/components/schemas/Credor"
+          },
+          "contrato": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContratoVinculo"
+              }
+            ]
+          }
+        }
+      },
+      "ImportarDocumentosFiscaisRequest": {
+        "type": "object",
+        "required": [
+          "codigo_ajuste",
+          "documentos_fiscais"
+        ],
+        "properties": {
+          "codigo_ajuste": {
+            "type": "string"
+          },
+          "documentos_fiscais": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/DocumentoFiscal"
+            }
+          }
+        }
+      },
+      "ImportarDocumentosFiscaisResponse": {
+        "type": "object",
+        "properties": {
+          "importados": {
+            "type": "integer"
+          },
+          "erros": {
+            "type": "integer"
+          },
+          "documentos_importados": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id_importacao": {
+                  "type": "integer"
+                },
+                "nr_documento_fiscal": {
+                  "type": "string"
+                },
+                "id_pc3s_documento_fiscal": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id_importacao": {
+                  "type": "integer"
+                },
+                "nr_documento_fiscal": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ContaBancaria": {
+        "type": "object",
+        "required": [
+          "cd_banco",
+          "cd_agencia",
+          "cd_conta_corrente",
+          "ds_conta_corrente"
+        ],
+        "properties": {
+          "cd_banco": {
+            "type": "string",
+            "description": "Código do banco (ex. \"341\")"
+          },
+          "cd_agencia": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9999,
+            "description": "Número da agência sem dígito verificador"
+          },
+          "cd_conta_corrente": {
+            "type": "string",
+            "maxLength": 20,
+            "description": "Número da conta (ex. \"123456-7\")"
+          },
+          "ds_conta_corrente": {
+            "type": "string",
+            "description": "Descrição/nome da conta"
+          }
+        }
+      },
+      "DocumentoFiscalVinculo": {
+        "type": "object",
+        "required": [
+          "nr_documento_fiscal",
+          "nr_documento_credor"
+        ],
+        "properties": {
+          "nr_documento_fiscal": {
+            "type": "string",
+            "description": "Número do documento fiscal"
+          },
+          "nr_documento_credor": {
+            "type": "string",
+            "description": "CPF/CNPJ do credor do documento fiscal"
+          }
+        }
+      },
+      "Pagamento": {
+        "type": "object",
+        "required": [
+          "folha_pagamento",
+          "dt_pagamento",
+          "cd_fonte_recurso",
+          "tp_meio_pagamento",
+          "vl_pagamento",
+          "id_importacao"
+        ],
+        "properties": {
+          "folha_pagamento": {
+            "type": "boolean",
+            "description": "`true` se é pagamento de folha (não vinculado a documento fiscal)"
+          },
+          "dt_pagamento": {
+            "type": "string",
+            "format": "date",
+            "description": "Data do pagamento (YYYY-MM-DD)"
+          },
+          "cd_fonte_recurso": {
+            "type": "string",
+            "description": "Código da fonte de recurso do estado"
+          },
+          "tp_meio_pagamento": {
+            "type": "integer",
+            "description": "ID do meio de pagamento (ver `/integracoes/pc3s/tp_meio_pagamento`)"
+          },
+          "nr_transacao": {
+            "type": "string",
+            "nullable": true,
+            "description": "Número da transação bancária"
+          },
+          "vl_pagamento": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor do pagamento (> 0)"
+          },
+          "id_importacao": {
+            "type": "integer",
+            "description": "Identificador único na origem — não permite duplicidade"
+          },
+          "documento_fiscal": {
+            "nullable": true,
+            "description": "Obrigatório quando `folha_pagamento = false`",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DocumentoFiscalVinculo"
+              }
+            ]
+          },
+          "conta_bancaria": {
+            "nullable": true,
+            "description": "Obrigatório quando `tp_meio_pagamento = 1`",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContaBancaria"
+              }
+            ]
+          }
+        }
+      },
+      "ImportarPagamentosRequest": {
+        "type": "object",
+        "required": [
+          "codigo_ajuste",
+          "pagamentos"
+        ],
+        "properties": {
+          "codigo_ajuste": {
+            "type": "string"
+          },
+          "pagamentos": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Pagamento"
+            }
+          }
+        }
+      },
+      "ImportarPagamentosResponse": {
+        "type": "object",
+        "properties": {
+          "importados": {
+            "type": "integer"
+          },
+          "erros": {
+            "type": "integer"
+          },
+          "pagamentos_importados": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id_importacao": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id_importacao": {
+                  "type": "integer"
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SalarioContratual": {
+        "type": "object",
+        "required": [
+          "dt_salario",
+          "vl_salario"
+        ],
+        "properties": {
+          "dt_salario": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de início do salário (YYYY-MM-DD)"
+          },
+          "vl_salario": {
+            "type": "number",
+            "format": "decimal",
+            "description": "Valor do salário contratual"
+          }
+        }
+      },
+      "Funcionario": {
+        "type": "object",
+        "required": [
+          "cpf",
+          "nome",
+          "cbo",
+          "dt_admissao",
+          "salario_contratual",
+          "remuneracoes"
+        ],
+        "properties": {
+          "cpf": {
+            "type": "string",
+            "pattern": "^\\d{11}$",
+            "description": "CPF válido com 11 dígitos (somente números)"
+          },
+          "nome": {
+            "type": "string",
+            "description": "Nome completo"
+          },
+          "cbo": {
+            "type": "string",
+            "description": "Código CBO da ocupação (ex. \"223115\")"
+          },
+          "cns": {
+            "type": "string",
+            "nullable": true,
+            "description": "Cartão Nacional de Saúde — obrigatório para CBO de saúde"
+          },
+          "dt_admissao": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de admissão (YYYY-MM-DD)"
+          },
+          "dt_demissao": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Data de demissão (YYYY-MM-DD), se houver"
+          },
+          "salario_contratual": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Histórico de salários contratuais.\nO primeiro item é marcado como `inicial = true` apenas se não houver salário já cadastrado.\n",
+            "items": {
+              "$ref": "#/components/schemas/SalarioContratual"
+            }
+          },
+          "remuneracoes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Remuneracao"
+            }
+          }
+        }
+      },
+      "ImportarFuncionariosRequest": {
+        "type": "object",
+        "required": [
+          "codigo_ajuste",
+          "funcionarios"
+        ],
+        "properties": {
+          "codigo_ajuste": {
+            "type": "string"
+          },
+          "funcionarios": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Funcionario"
+            }
+          }
+        }
+      },
+      "ImportarFuncionariosResponse": {
+        "type": "object",
+        "properties": {
+          "importados": {
+            "type": "integer"
+          },
+          "erros": {
+            "type": "integer"
+          },
+          "remuneracoes_importadas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Remuneracao"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "cpf": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ServidorCedido": {
+        "type": "object",
+        "required": [
+          "cpf",
+          "nome",
+          "tp_onus_pagamento",
+          "dt_inicio_cessao",
+          "cargo_publico_ocupado",
+          "funcao_desempenhada",
+          "remuneracoes"
+        ],
+        "properties": {
+          "cpf": {
+            "type": "string",
+            "pattern": "^\\d{11}$",
+            "description": "CPF válido com 11 dígitos (somente números)"
+          },
+          "nome": {
+            "type": "string",
+            "description": "Nome completo"
+          },
+          "tp_onus_pagamento": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ],
+            "description": "`1` = concessor · `2` = beneficiário · `3` = ambos"
+          },
+          "dt_inicio_cessao": {
+            "type": "string",
+            "format": "date",
+            "description": "Data de início da cessão (YYYY-MM-DD)"
+          },
+          "dt_termino_cessao": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Data de término da cessão (YYYY-MM-DD), se houver"
+          },
+          "cargo_publico_ocupado": {
+            "type": "string",
+            "description": "Denominação do cargo público ocupado"
+          },
+          "funcao_desempenhada": {
+            "type": "string",
+            "description": "Descrição da função desempenhada"
+          },
+          "remuneracoes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/Remuneracao"
+            }
+          }
+        }
+      },
+      "ImportarServidoresCedidosRequest": {
+        "type": "object",
+        "required": [
+          "codigo_ajuste",
+          "servidores_cedidos"
+        ],
+        "properties": {
+          "codigo_ajuste": {
+            "type": "string"
+          },
+          "servidores_cedidos": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/ServidorCedido"
+            }
+          }
+        }
+      },
+      "ImportarServidoresCedidosResponse": {
+        "type": "object",
+        "properties": {
+          "importados": {
+            "type": "integer"
+          },
+          "erros": {
+            "type": "integer"
+          },
+          "remuneracoes_importadas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Remuneracao"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "cpf": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
