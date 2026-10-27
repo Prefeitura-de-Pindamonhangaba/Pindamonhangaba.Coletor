@@ -94,7 +94,7 @@ export function ImportPage() {
   }
   return (
     <div className="shell">
-      <InstitutionalHeader />
+      <InstitutionalHeader csv />
       <div className="workspace">
         <main id="importacao">
           <div className="breadcrumb">

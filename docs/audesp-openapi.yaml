@@ -1,0 +1,1788 @@
+openapi: 3.0.0
+info:
+  title: Sistema Audesp 
+  description: |
+    ![Logo-Audesp](https://www.tce.sp.gov.br/sites/default/files/inline-images/logo_audesp.png)
+    
+    APIs do Sistema Audesp para a prestação e consulta de dados.
+    
+    **Mais informações**: [https://www.tce.sp.gov.br/audesp](https://www.tce.sp.gov.br/audesp)
+    
+    **Tirar dúvidas**: [Abrir protocolo](https://www4.tce.sp.gov.br/chamados/open.php?1lid=10) (Selecione a opção "2.01. Audesp" em _Área de atuação_ e a opção "Audesp / Fase V - Dúvidas/críticas/sugestões dos jurisdicionados" em _Objeto_).
+    
+    **Suporte técnico aos sistemas**: [Abrir protocolo](https://www4.tce.sp.gov.br/chamados/open.php?1lid=9) (Selecione a opção "2.01. Audesp" em _Área de atuação_ e a opção "Audesp / Fase V - Falhas técnicas que precisam de avaliação para correção" em _Objeto_). 
+    
+    **Atendimento telefônico**: [(11) 3292-4321](tel:551132924321) 
+    
+  version: "1.17.0"
+
+servers:
+  - url: https://audesp-piloto.tce.sp.gov.br
+    description: Ambiente piloto para testes
+  - url: https://audesp.tce.sp.gov.br
+    description: Ambiente oficial para prestação de dados
+
+tags:
+  - name: Autenticação
+    description: Autenticação para acesso aos serviços
+  - name: Consulta
+    description: Consulta situação de documentos prestados
+  - name: Fase IV
+    description: Prestação de dados de Licitações e Contratos
+  - name: Fase V
+    description: Prestação de dados de Repasses ao Terceiro Setor
+
+paths:
+  /login:
+    post:
+      tags:
+        - Autenticação
+      summary: Obter token de acesso
+      description: Obtenção de token para acesso aos demais serviços.
+      parameters:
+        - name: x-authorization
+          in: header
+          required: true
+          description: E-Mail do usuário e senha de acesso ao Portal de Sistemas do TCESP. O e-mail e a senha devem ser separados por dois pontos (:), conforme exemplo abaixo.
+          schema: 
+            type: string
+            format: email:$password
+            example: "usuario@email.com:senha"
+      responses:
+        '200':
+          description: Autenticação realizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+              examples:
+                Token:
+                  $ref: '#/components/examples/Token'
+                    
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+
+  /recepcao-fase-4/f4/enviar-edital:
+    post:
+      tags:
+        - Fase IV
+      summary: Enviar edital de licitação
+      description: |
+        Envio de editais de licitação. O edital deve ser enviado em arquivo PDF e incluir metadados em formato JSON respeitando o schema proposto no documento abaixo.
+        
+        Obs.: Não é permitido o envio de arquivos com mais de 30MB.
+        
+        _JSON Schemas e mais informações_: [AUDESP - Licitações e Contratos - JSON/Schemas](https://www.tce.sp.gov.br/audesp/documentacao/reformulacao-fase-iv-jsonschemas-e-documentacao-xlsx)
+      
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documentoJSON:
+                  $ref: '#/components/schemas/JSON_Edital'
+                arquivoPDF:
+                  type: string
+                  format: binary
+              required: ['documentoJSON', 'arquivoPDF']
+            encoding: 
+              arquivo:
+                contentType: application/pdf
+      responses:
+        '200':
+          description: Envio realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaEnvioOK'
+              examples:
+                Envio com Sucesso:
+                  $ref: '#/components/examples/DocumentoRecebidoSucesso'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaErro400DocInvalido'
+              examples:
+                Documento Inválido:
+                  $ref: '#/components/examples/Erro400DocInvalido'
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '413':
+          description: Request Entity Too Large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Request Entity Too Large:
+                  $ref: '#/components/examples/Erro413'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+  /recepcao-fase-4/f4/enviar-licitacao:
+    post:
+      tags:
+        - Fase IV
+      summary: Enviar licitação
+      description: |
+        Envio de licitações. A licitação deve ser enviada em formato JSON respeitando o schema proposto na publicação abaixo.
+        
+        _JSON Schemas e mais informações_: [AUDESP - Licitações e Contratos - JSON/Schemas](https://www.tce.sp.gov.br/audesp/documentacao/reformulacao-fase-iv-jsonschemas-e-documentacao-xlsx)
+      
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documentoJSON:
+                  format: text
+              required: ['documentoJSON']
+      responses:
+        '200':
+          description: Envio realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaEnvioOK'
+              examples:
+                Envio com Sucesso:
+                  $ref: '#/components/examples/DocumentoRecebidoSucesso'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaErro400DocInvalido'
+              examples:
+                Documento Inválido:
+                  $ref: '#/components/examples/Erro400DocInvalido'
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+  /recepcao-fase-4/f4/enviar-ata:
+    post:
+      tags:
+        - Fase IV
+      summary: Enviar ata
+      description: |
+        Envio de atas. A ata deve ser enviada em formato JSON respeitando o schema proposto na publicação abaixo.
+        
+        _JSON Schemas e mais informações_: [AUDESP - Licitações e Contratos - JSON/Schemas](https://www.tce.sp.gov.br/audesp/documentacao/reformulacao-fase-iv-jsonschemas-e-documentacao-xlsx)
+      
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documentoJSON:
+                  format: text
+              required: ['documentoJSON']
+      responses:
+        '200':
+          description: Envio realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaEnvioOK'
+              examples:
+                Envio com Sucesso:
+                  $ref: '#/components/examples/DocumentoRecebidoSucesso'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaErro400DocInvalido'
+              examples:
+                Documento Inválido:
+                  $ref: '#/components/examples/Erro400DocInvalido'
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+  /recepcao-fase-4/f4/enviar-ajuste:
+    post:
+      tags:
+        - Fase IV
+      summary: Enviar ajuste
+      description: |
+        Envio de ajuste. O ajuste deve ser enviado em formato JSON respeitando o schema proposto na publicação abaixo.
+        
+        _JSON Schemas e mais informações_: [AUDESP - Licitações e Contratos - JSON/Schemas](https://www.tce.sp.gov.br/audesp/documentacao/reformulacao-fase-iv-jsonschemas-e-documentacao-xlsx)
+      
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documentoJSON:
+                  format: text
+              required: ['documentoJSON']
+      responses:
+        '200':
+          description: Envio realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaEnvioOK'
+              examples:
+                Envio com Sucesso:
+                  $ref: '#/components/examples/DocumentoRecebidoSucesso'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaErro400DocInvalido'
+              examples:
+                Documento Inválido:
+                  $ref: '#/components/examples/Erro400DocInvalido'
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+                  
+
+  /f4/consulta/{protocolo}:
+    get:
+      tags:
+        - Consulta
+      summary: Consultar documento da Fase IV
+      description: Consulta a situação de documentos prestados da Fase IV pelo número do protocolo.
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+        - in: path
+          description: Número do protocolo a ser consultado.
+          required: true
+          name: protocolo
+          schema:
+            type: string
+          example: 'F4EDT71071004801'
+      responses:
+        '200':
+          description: Situação do protocolo consultada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaConsultaOKFaseIV'
+              examples:
+                Status - Recebido:
+                  $ref: '#/components/examples/ConsultaStatusRecebido'
+                Status - Rejeitado:
+                  $ref: '#/components/examples/f4/ConsultaStatusRejeitado'
+                Status - Armazenado:
+                  $ref: '#/components/examples/f4/ConsultaStatusArmazenado'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+                  
+
+  /f5/consulta/{protocolo}:
+    get:
+      tags:
+        - Consulta
+      summary: Consultar documento da Fase V
+      description: Consulta a situação de documentos prestados da Fase V pelo número do protocolo.
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+        - in: path
+          description: Número do protocolo a ser consultado.
+          required: true
+          name: protocolo
+          schema:
+            type: string
+          example: 'F5ABC71071004801'
+      responses:
+        '200':
+          description: Situação do protocolo consultada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaConsultaOKFaseV'
+              examples:
+                Status - Recebido:
+                  $ref: '#/components/examples/f5/ConsultaStatusRecebido'
+                Status - Rejeitado:
+                  $ref: '#/components/examples/f5/ConsultaStatusRejeitado'
+                Status - Armazenado:
+                  $ref: '#/components/examples/f5/ConsultaStatusArmazenado'
+                Status - Substituido:
+                  $ref: '#/components/examples/f5/ConsultaStatusSubstituido'
+                Status - Excluido:
+                  $ref: '#/components/examples/f5/ConsultaStatusExcluido'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+  /f5/enviar-prestacao-contas-contrato-gestao:
+    post:
+      tags:
+        - Fase V
+      summary: Enviar prestação de contas de contrato de gestão
+      description: |
+        Envio da prestação de contas de contratos de gestão. A prestação deve ser enviada em formato JSON respeitando o schema proposto no documento abaixo.
+        
+        _JSON Schemas e mais informações_: [AUDESP - Repasses ao Terceito Setor - JSON/Schemas](https://www.tce.sp.gov.br/audesp/documentacao/audesp-repasses-ao-terceito-setor-jsonschemas)
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documentoJSON:
+                  format: text
+      responses:
+        '200':
+          description: Envio realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaEnvioOK'
+              examples:
+                Envio com Sucesso:
+                  $ref: '#/components/examples/f5/DocumentoRecebidoSucesso'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaErro400DocInvalido'
+              examples:
+                Documento Inválido:
+                  $ref: '#/components/examples/Erro400DocInvalido'
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+  /f5/enviar-prestacao-contas-convenio:
+    post:
+      tags:
+        - Fase V
+      summary: Enviar prestação de contas de convênio
+      description: |
+        Envio da prestação de contas de convênios. A prestação deve ser enviada em formato JSON respeitando o schema proposto no documento abaixo.
+        
+        _JSON Schemas e mais informações_: [AUDESP - Repasses ao Terceito Setor - JSON/Schemas](https://www.tce.sp.gov.br/audesp/documentacao/audesp-repasses-ao-terceito-setor-jsonschemas)
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documentoJSON:
+                  format: text
+      responses:
+        '200':
+          description: Envio realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaEnvioOK'
+              examples:
+                Envio com Sucesso:
+                  $ref: '#/components/examples/f5/DocumentoRecebidoSucesso'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaErro400DocInvalido'
+              examples:
+                Documento Inválido:
+                  $ref: '#/components/examples/Erro400DocInvalido'
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+  /f5/enviar-prestacao-contas-termo-colaboracao:
+    post:
+      tags:
+        - Fase V
+      summary: Enviar prestação de contas de termo de colaboração
+      description: |
+        Envio da prestação de contas de termos de colaboração. A prestação deve ser enviada em formato JSON respeitando o schema proposto no documento abaixo.
+        
+        _JSON Schemas e mais informações_: [AUDESP - Repasses ao Terceito Setor - JSON/Schemas](https://www.tce.sp.gov.br/audesp/documentacao/audesp-repasses-ao-terceito-setor-jsonschemas)
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documentoJSON:
+                  format: text
+      responses:
+        '200':
+          description: Envio realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaEnvioOK'
+              examples:
+                Envio com Sucesso:
+                  $ref: '#/components/examples/f5/DocumentoRecebidoSucesso'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaErro400DocInvalido'
+              examples:
+                Documento Inválido:
+                  $ref: '#/components/examples/Erro400DocInvalido'
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+  /f5/enviar-prestacao-contas-termo-fomento:
+    post:
+      tags:
+        - Fase V
+      summary: Enviar prestação de contas de termo de fomento
+      description: |
+        Envio da prestação de contas de termos de fomento. A prestação deve ser enviada em formato JSON respeitando o schema proposto no documento abaixo.
+        
+        _JSON Schemas e mais informações_: [AUDESP - Repasses ao Terceito Setor - JSON/Schemas](https://www.tce.sp.gov.br/audesp/documentacao/audesp-repasses-ao-terceito-setor-jsonschemas)
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documentoJSON:
+                  format: text
+      responses:
+        '200':
+          description: Envio realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaEnvioOK'
+              examples:
+                Envio com Sucesso:
+                  $ref: '#/components/examples/f5/DocumentoRecebidoSucesso'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaErro400DocInvalido'
+              examples:
+                Documento Inválido:
+                  $ref: '#/components/examples/Erro400DocInvalido'
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+  /f5/enviar-prestacao-contas-termo-parceria:
+    post:
+      tags:
+        - Fase V
+      summary: Enviar prestação de contas de termo de parceria
+      description: |
+        Envio da prestação de contas de termos de parceria. A prestação deve ser enviada em formato JSON respeitando o schema proposto no documento abaixo.
+        
+        _JSON Schemas e mais informações_: [AUDESP - Repasses ao Terceito Setor - JSON/Schemas](https://www.tce.sp.gov.br/audesp/documentacao/audesp-repasses-ao-terceito-setor-jsonschemas)
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documentoJSON:
+                  format: text
+      responses:
+        '200':
+          description: Envio realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaEnvioOK'
+              examples:
+                Envio com Sucesso:
+                  $ref: '#/components/examples/f5/DocumentoRecebidoSucesso'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaErro400DocInvalido'
+              examples:
+                Documento Inválido:
+                  $ref: '#/components/examples/Erro400DocInvalido'
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+  /f5/declaracao-negativa:
+    post:
+      tags:
+        - Fase V
+      summary: Enviar declaração negativa de prestação de contas
+      description: |
+        Envio da declaração negativa da prestação de contas. A declaração deve ser enviada em formato JSON respeitando o schema proposto no documento abaixo.
+        
+        _JSON Schemas e mais informações_: [AUDESP - Repasses ao Terceito Setor - JSON/Schemas](https://www.tce.sp.gov.br/audesp/documentacao/audesp-repasses-ao-terceito-setor-jsonschemas)
+      parameters:
+        - in: header
+          name: Authorization
+          description: Token de acesso precedido do prefixo 'Bearer', conforme exemplo abaixo.
+          required: true
+          schema:
+            type: string
+            format: jwt
+          examples:
+            Authorization:
+              $ref: '#/components/examples/Authorization'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documentoJSON:
+                  format: text
+      responses:
+        '200':
+          description: Envio realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaEnvioOK'
+              examples:
+                Envio com Sucesso:
+                  $ref: '#/components/examples/f5/DocumentoRecebidoSucesso'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaErro400DocInvalido'
+              examples:
+                Documento Inválido:
+                  $ref: '#/components/examples/Erro400DocInvalido'
+                Bad Request:
+                  $ref: '#/components/examples/Erro400'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Unauthorized:
+                  $ref: '#/components/examples/Erro401'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Forbidden:
+                  $ref: '#/components/examples/Erro403'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Not Found:
+                  $ref: '#/components/examples/Erro404'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaPadraoErro'
+              examples:
+                Internal Server Error:
+                  $ref: '#/components/examples/Erro500'
+
+components:
+  examples:
+
+    f4:
+      ConsultaStatusArmazenado:
+        value:
+          protocolo: 'F4AJU710710048209'
+          tipoDocumento: 'Nome do tipo do documento'
+          status: 'Armazenado'
+          dataHora: '01-03-2023 00:00:00'
+          erros: [
+              {
+                mensagem: 'Mensagem de erro.',
+                classificacao: 'Indicativo',
+                codigoErro: 'RN999-CODIGO',
+                campo: 'Campo do erro.',
+                origem: 'Valor informado para o campo.'
+              },
+              {
+                mensagem: 'Mensagem de erro.',
+                classificacao: 'Indicativo',
+                codigoErro: 'RN998-CODIGO',
+                campo: 'Campo do erro.',
+                origem: 'Valor informado para o campo.'
+              }
+            ]
+      ConsultaStatusRejeitado:
+        value:
+          protocolo: 'F4AJU710710048208'
+          tipoDocumento: 'Nome do tipo do documento'
+          status: 'Rejeitado'
+          dataHora: '01-03-2023 00:00:00'
+          erros: [
+              {
+                mensagem: 'Mensagem de erro.',
+                classificacao: 'Impeditivo',
+                codigoErro: 'RN997-CODIGO',
+                campo: 'Campo do erro.',
+                origem: 'Valor informado para o campo.'
+              },
+              {
+                mensagem: 'Mensagem de erro.',
+                classificacao: 'Indicativo',
+                codigoErro: 'RN996-CODIGO',
+                campo: 'Campo do erro.',
+                origem: 'Valor informado para o campo.'
+              }
+            ]                                                                                  
+
+    f5:
+      DocumentoRecebidoSucesso:
+        value:
+          protocolo: 'F5ABC71071004801'
+          mensagem: 'Documento recebido com sucesso!'
+      ConsultaStatusRecebido:
+        value:
+          protocolo: 'F5ABC71071004801'
+          tipoDocumento: 'Nome do documento'
+          status: 'Recebido'
+          dataHora: '01-03-2023 00:00:00'
+      ConsultaStatusArmazenado:
+        value:
+          protocolo: 'F5ABC71071004801'
+          tipoDocumento: 'Nome do documento'
+          status: 'Armazenado'
+          dataHora: '01-03-2023 00:00:00'
+          erros: [
+              {
+                mensagem: 'Mensagem de erro.',
+                classificacao: 'Indicativo',
+                codigoErro: 'RN999-CODIGO',
+                campo: 'Campo do erro.',
+                origem: 'Valor do campo.'
+              },
+              {
+                mensagem: 'Mensagem de erro.',
+                classificacao: 'Indicativo',
+                codigoErro: 'RN999-CODIGO',
+                campo: 'Campo do erro.',
+                origem: 'Valor do campo.'
+              }
+            ]
+      ConsultaStatusRejeitado:
+        value:
+          protocolo: 'F5ABC71071004801'
+          tipoDocumento: 'Nome do documento'
+          status: 'Rejeitado'
+          dataHora: '01-03-2023 00:00:00'
+          erros: [
+              {
+                mensagem: 'Mensagem de erro.',
+                classificacao: 'Impeditivo',
+                codigoErro: 'RN999-CODIGO',
+                campo: 'Campo do erro.',
+                origem: 'Valor do campo.'
+              },
+              {
+                mensagem: 'Mensagem de erro.',
+                classificacao: 'Indicativo',
+                codigoErro: 'RN999-CODIGO',
+                campo: 'Campo do erro.',
+                origem: 'Valor do campo.'
+              }
+            ]                                                                                  
+      ConsultaStatusSubstituido:
+        value:
+          protocolo: 'F5ABC71071004801'
+          tipoDocumento: 'Nome do documento'
+          status: 'Substituído'
+          dataHora: '01-03-2023 00:00:00'
+          erros: [
+              {
+                mensagem: 'Prestação de contas substituída devido ao envio de retificação',
+                classificacao: 'Impeditivo',
+                codigoErro: 'RN001-RETIFICACAO',
+                campo: 'protocolo, ano, mes',
+                origem: 'F5ABC71071004803, 2023, 12'
+              }
+            ]                                                                                  
+      ConsultaStatusExcluido:
+        value:
+          protocolo: 'F5ABC71071004802'
+          tipoDocumento: 'Nome do documento'
+          status: 'Excluído'
+          dataHora: '01-03-2023 00:00:00'
+          erros: [
+              {
+                mensagem: 'Prestação de contas excluída devido ao envio de retificação',
+                classificacao: 'Impeditivo',
+                codigoErro: 'RN002-RETIFICACAO',
+                campo: 'protocolo, ano, mes',
+                origem: 'F5ABC71071004803, 2023, 12'
+              }
+            ]                                                                                  
+
+    Token:
+      value:
+        token: 'eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwLXRmaXJtaW5vQHRjZS5zcC5nb3Yu.ooyP45G2S5URGXr75zrxtYfYP_Mczg'
+        expire_in: 1677849928
+        token_type: 'bearer'
+
+    Authorization:
+      value: 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJwLXRmaXJtaW5vQHRjZS5zcC5nb3Yu.ooyP45G2S5URGXr75zrxtYfYP_Mczg'
+
+    ConsultaStatusRecebido:
+      value:
+        protocolo: 'FFABC71071004801'
+        tipoDocumento: 'Nome do documento'
+        status: 'Recebido'
+        dataHora: '01-03-2023 00:00:00'
+
+    ConsultaStatusArmazenado:
+      value:
+        protocolo: 'FFABC71071004801'
+        tipoDocumento: 'Nome do documento'
+        status: 'Armazenado'
+        dataHora: '01-03-2023 00:00:00'
+
+    ConsultaStatusRejeitado:
+      value:
+        protocolo: 'FFABC71071004801'
+        tipoDocumento: 'Nome do documento'
+        status: 'Rejeitado'
+        dataHora: '01-03-2023 00:00:00'
+        erros: [
+            {
+              mensagem: 'Mensagem de erro.',
+              campo: 'Campo do erro.',
+              origem: 'Valor do campo.'
+            },
+            {
+              mensagem: 'Mensagem de erro.',
+              campo: 'Campo do erro.',
+              origem: 'Valor do campo.'
+            }
+          ]                                                                                  
+    DocumentoRecebidoSucesso:
+      value:
+        protocolo: 'FFABC71071004801'
+        mensagem: 'Documento recebido com sucesso!'
+        
+    Erro400:
+      value: {
+                "timestamp": "2023-03-06T13:43:45.329+00:00",
+                "status": 400,
+                "error": "Bad Request",
+                "message": "Mensagem de erro",
+                "path": "Caminho da URL"
+              }
+
+    Erro400DocInvalido:
+      value: {
+                "timestamp": "2023-03-06T13:43:45.329+00:00",
+                "status": 400,
+                "error": "Bad Request",
+                "message": {
+                  mensagem: "O arquivo JSON não foi validado pelo Schema!",
+                  erros: [
+                    "Campo do erro: mensagem de erro",
+                    "Campo do erro: mensagem de erro",
+                    "Campo do erro: mensagem de erro"
+                  ]
+                },
+                "path": "Caminho da URL"
+              }
+
+    Erro401:
+      value: {
+                "timestamp": "2023-03-06T13:43:45.329+00:00",
+                "status": 401,
+                "error": "Unauthorized",
+                "message": "Mensagem de erro",
+                "path": "Caminho da URL"
+              }
+
+    Erro403:
+      value: {
+                "timestamp": "2023-03-06T13:43:45.329+00:00",
+                "status": 403,
+                "error": "Forbidden",
+                "message": "Mensagem de erro",
+                "path": "Caminho da URL"
+              }
+
+    Erro404:
+      value: {
+                "timestamp": "2023-03-06T13:43:45.329+00:00",
+                "status": 404,
+                "error": "Not Found",
+                "message": "Mensagem de erro",
+                "path": "Caminho da URL"
+              }
+    
+    Erro413:
+      value: {
+                "timestamp": "2023-03-06T13:43:45.329+00:00",
+                "status": 413,
+                "error": "Request Entity Too Large",
+                "message": "Mensagem de erro",
+                "path": "Caminho da URL"
+              }
+
+    Erro500:
+      value: {
+                "timestamp": "2023-03-06T13:43:45.329+00:00",
+                "status": 500,
+                "error":" Internal Server Error",
+                "message": "Mensagem de erro",
+                "path": "Caminho da URL"
+              }
+
+  schemas:
+    
+    Token:
+      type: object
+      properties:
+        access_token:
+          type: string
+        expire_in:
+          type: integer
+        token_type:
+          type: string
+
+    RespostaConsultaOKFaseIV:
+      type: object
+      properties:
+        protocolo:
+          type: string
+        tipoDocumento:
+          type: string
+        status:
+          type: string
+        dataHora:
+          type: string
+        erros:
+          type: array
+          items:
+            properties:
+              mensagem:
+                type: string
+              classificacao:
+                type: string
+              codigoErro:
+                type: string
+              campo:
+                type: string
+              origem:
+                type: string
+
+    RespostaConsultaOKFaseV:
+      type: object
+      properties:
+        protocolo:
+          type: string
+        tipoDocumento:
+          type: string
+        status:
+          type: string
+        dataHora:
+          type: string
+        erros:
+          type: array
+          items:
+            properties:
+              mensagem:
+                type: string
+              classificacao:
+                type: string
+              codigoErro:
+                type: string
+              campo:
+                type: string
+              origem:
+                type: string
+
+    RespostaEnvioOK:
+      type: object
+      properties:
+        protocolo:
+          type: string
+        mensagem:
+          type: string
+
+    RespostaPadraoErro:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        status:
+          type: string
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+
+    RespostaErro400DocInvalido:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        status:
+          type: string
+        error:
+          type: string
+        message:
+          type: object
+          properties:
+            mensagem: 
+              type: string
+            erros: 
+              type: array
+              items: 
+                type: string
+        path:
+          type: string
+    
+    JSON_Edital:
+      type:
+        object
+      properties:
+        descritor:
+          type: object
+          properties:
+            municipio:
+              description: Municipio
+              type: integer
+              minimum: 1
+              maximum: 9999
+            entidade:
+              description: Entidade
+              type: integer
+              minimum: 1
+              maximum: 99999
+            ano:
+              description: Ano
+              type: integer
+            codigoEdital:
+              description: Código único que identifica o Edital original
+              type: string
+              maxLength: 20
+            dataPublicacao:
+              description: Data da Publicação deste Edital ou desta Retificação de Edital
+              type: string
+              format: date
+            retificacao:
+              description: >-
+                Identifica se o documento é uma retificação; true - Retificação; false
+                - Não é retificação
+              type: boolean
+          required:
+            - municipio
+            - entidade
+            - ano
+            - codigoEdital
+            - dataPublicacao
+            - retificacao
+          additionalProperties: false
+        codigoUnidadeCompradora:
+          description: >-
+            Código da unidade; A unidade deverá estar cadastrada para o órgão
+            originário da contratação (proprietário da contratação ou alienação de
+            bens)
+          type: string
+          maxLength: 20
+        tipoInstrumentoConvocatorioId:
+          description: Tipo de instrumento Convocatório
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+        modalidadeId:
+          description: Modalidade de Compra/Contratação
+          type: integer
+          enum:
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+            - 7
+            - 8
+            - 9
+            - 12
+            - 13
+            - 15
+            - 16
+        modoDisputaId:
+          description: Modo de disputa
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+            - 4
+            - 5
+            - 6
+        numeroCompra:
+          description: >-
+            Número da contratação no sistema de origem sem o ano. Esse número é gerado
+            pelo usuário no seu sistema de origem (ex. Pregão 14)
+          type: string
+          maxLength: 50
+        anoCompra:
+          description: >-
+            Ano da contratação. Esse é o ano relacionado ao número da contratação.
+            (Ex: 2021)
+          type: integer
+        numeroProcesso:
+          description: Número do processo de contratação no sistema de origem
+          type: string
+          maxLength: 50
+        objetoCompra:
+          description: Objeto da contratação
+          type: string
+          maxLength: 5120
+        informacaoComplementar:
+          description: Informações complementares; Se houver;
+          type: string
+          maxLength: 5120
+        srp:
+          description: Identifica se a compra trata-se de um SRP (Sistema de registro de preços).
+          type: boolean
+        dataAberturaProposta:
+          description: >-
+            data e hora de início do recebimento das propostas (pelo horário de
+            Brasília)
+          type: string
+          format: date-time
+        dataEncerramentoProposta:
+          description: >-
+            data e hora de encerramento do recebimento das propostas (pelo horário de
+            Brasília)
+          type: string
+          format: date-time
+        amparoLegalId:
+          description: Amparo legal para dispensa ou inexigibilidade
+          type: integer
+        linkSistemaOrigem:
+          description: url do sistema de origem para envio de proposta/lance
+          type: string
+          minimum: 1
+          maxLength: 500
+        justificativaPresencial:
+          description: justificativa pela escolha da modalidade presencial
+          type: string
+          minimum: 1
+          maxLength: 500
+        itensCompra:
+          description: Lista de itens da contratação
+          type: array
+          items:
+            description: Item da contratação
+            type: object
+            required:
+              - numeroItem
+              - materialOuServico
+              - tipoBeneficioId
+              - incentivoProdutivoBasico
+              - descricao
+              - quantidade
+              - unidadeMedida
+              - orcamentoSigiloso
+              - valorUnitarioEstimado
+              - valorTotal
+              - criterioJulgamentoId
+              - itemCategoriaId
+              - patrimonio
+              - codigoRegistroImobiliario
+            additionalProperties: false
+            properties:
+              numeroItem:
+                description: Número do item na contratação (único e sequencial crescente)
+                type: integer
+              materialOuServico:
+                description: M - Material; S - Serviço
+                type: string
+                minLength: 1
+                maxLength: 1
+              tipoBeneficioId:
+                description: Tipo de benefício
+                type: integer
+                enum:
+                  - 1
+                  - 2
+                  - 3
+                  - 4
+                  - 5
+              incentivoProdutivoBasico:
+                description: >-
+                  Incentivo fiscal PPB (Processo Produtivo Básico); true - Possui o
+                  incentivo; false - Não possui o incentivo;
+                type: boolean
+              descricao:
+                description: Descrição para o produto ou serviço
+                type: string
+                minLength: 1
+                maxLength: 2048
+              quantidade:
+                description: >-
+                  Quantidade do item da contratação. Precisão de 4 dígitos decimais;
+                  Ex: 100.0000
+                type: number
+              unidadeMedida:
+                description: Unidade de medida do item da contratação
+                type: string
+                minLength: 1
+                maxLength: 30
+              orcamentoSigiloso:
+                description: >-
+                  Identifica se o orçamento do item é sigiloso; true - Sigiloso; false
+                  - Não sigiloso
+                type: boolean
+              valorUnitarioEstimado:
+                description: >-
+                  Valor unitário estimado para o item da contratação. Precisão de 4
+                  dígitos decimais; Ex: 100.0000
+                type: number
+              valorTotal:
+                description: >-
+                  Valor total para contratação tradicional. Precisão de 4 dígitos
+                  decimais; Ex: 100.0000
+                type: number
+              criterioJulgamentoId:
+                description: Critério de julgamento
+                type: integer
+                enum:
+                  - 1
+                  - 2
+                  - 4
+                  - 5
+                  - 6
+                  - 7
+                  - 8
+                  - 9
+              itemCategoriaId:
+                description: >-
+                  Categoria do item. Domínios 1 ou 2 aplicados à modalidade leilão.
+                  Outras modalidades de contratação utilizar o domínio 3. Domínio: 1 –
+                  Bens Imóveis; 2 – Bens Móveis; 3 - Não se aplica
+                type: integer
+                enum:
+                  - 1
+                  - 2
+                  - 3
+              patrimonio:
+                description: Código de Patrimonio do Item de bens móveis quando existir.
+                type: string
+                minLength: 1
+                maxLength: 255
+              codigoRegistroImobiliario:
+                description: Código de Registro Imobiliário
+                type: string
+                minLength: 1
+                maxLength: 255
+      required:
+        - descritor
+        - codigoUnidadeCompradora
+        - tipoInstrumentoConvocatorioId
+        - modalidadeId
+        - modoDisputaId
+        - numeroCompra
+        - anoCompra
+        - numeroProcesso
+        - objetoCompra
+        - informacaoComplementar
+        - srp
+        - dataAberturaProposta
+        - dataEncerramentoProposta
+        - amparoLegalId
+        - linkSistemaOrigem
+        - justificativaPresencial
+        - itensCompra

@@ -324,7 +324,7 @@ label {
   color: var(--blue);
   margin-bottom: 8px;
 }
-label span {
+label[for="code"] span {
   color: var(--red);
 }
 input:not([type="checkbox"]):not([type="file"]),
@@ -1104,5 +1104,98 @@ td {
   }
   .panel {
     box-shadow: none;
+  }
+}
+.format-choice {
+  border: 0;
+  padding: 0;
+  margin: 24px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.format-choice legend {
+  font-size: 0.875rem;
+  color: var(--color-brand);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.format-choice label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--color-control-border);
+  border-radius: var(--radius-control);
+  padding: 12px 16px;
+  flex: 1;
+  margin: 0;
+  cursor: pointer;
+}
+.format-choice label:has(input:checked) {
+  background: var(--color-surface-success);
+  border-color: var(--color-brand-accent);
+}
+.format-choice input[type="radio"] {
+  accent-color: var(--color-brand-accent);
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex: 0 0 18px;
+  padding: 0;
+  margin: 0;
+}
+.format-choice small {
+  display: block;
+  font-weight: 400;
+  font-size: 0.75rem;
+}
+.workbook-drop {
+  margin-top: 24px;
+}
+.column-guide summary {
+  padding: 12px 0;
+  cursor: pointer;
+  color: var(--color-brand);
+  font-weight: 600;
+}
+.column-guide details {
+  overflow-x: auto;
+}
+.batch-list {
+  list-style: decimal;
+  padding-left: 24px;
+}
+.batch-list li {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+.batch-list li > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+}
+.batch-list li span {
+  font-size: 0.875rem;
+}
+.batch-list summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--color-brand);
+  margin-block: 12px;
+}
+.batch-list pre {
+  max-height: 300px;
+  overflow: auto;
+  background: var(--color-background-page);
+  padding: 16px;
+}
+.notice a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .format-choice {
+    flex-direction: column;
   }
 }

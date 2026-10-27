@@ -1,5 +1,7 @@
 # Integração GCC / PC3S
 
+Para o fluxo XLSX/CSV por instrumento, consulte [a organização das planilhas](planilhas-audesp.md). A convenção CSV abaixo descreve o fluxo avulso preservado em `/csv`.
+
 Contrato consultado em 26/10/2026: https://siapegov.pindamonhangaba.sp.gov.br/gcc-web/api-pc3s-swagger. A página carrega `swagger.yml`, preservado neste diretório. `siape-openapi.json` é gerado com `bun run contract:prepare` e versionado. Revise alterações do contrato antes de atualizar. Não há download dinâmico do Swagger durante a execução.
 
 Base fixa: `https://siapegov.pindamonhangaba.sp.gov.br/gcc-web/api/integracoes`. O backend obtém um token por `POST /login` com `gcc_key`, então envia `codigo_ajuste` e a lista correspondente para `/pc3s/{tipo}`. Não há tentativa automática de reenvio. Timeout de 30 segundos por requisição. Uma falha de transporte pode ocorrer após a gravação remota; confira no GCC antes de repetir.

@@ -1,4 +1,4 @@
-import { ImportPage } from "../modules/imports/views/import-page";
+import { WorkbookPage } from "../modules/imports/views/workbook-page";
 export default function Page() {
-  return <ImportPage />;
+  return <WorkbookPage />;
 }

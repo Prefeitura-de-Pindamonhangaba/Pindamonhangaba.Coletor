@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export function InstitutionalHeader() {
+export function InstitutionalHeader({ csv = false }: { csv?: boolean }) {
   return (
     <>
       <a className="skip-link" href="#importacao">
@@ -38,10 +38,13 @@ export function InstitutionalHeader() {
       </div>
       <div className="panel-nav-band">
         <nav className="container panel-nav" aria-label="Navegação principal">
-          <a href="#importacao" aria-current="page">
-            Importar dados
-          </a>
-          <a href="#guia">Guia do CSV</a>
+          <Link href="/" aria-current={!csv ? "page" : undefined}>
+            Importar por instrumento
+          </Link>
+          <Link href="/csv" aria-current={csv ? "page" : undefined}>
+            CSV avulso
+          </Link>
+          <a href="#guia">Guia de preenchimento</a>
           <a
             href="https://siapegov.pindamonhangaba.sp.gov.br/gcc-web/api-pc3s-swagger"
             target="_blank"

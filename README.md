@@ -1,6 +1,6 @@
 # Coletor Municipal
 
-Interface de importação CSV para a API GCC / PC3S de Pindamonhangaba. Next.js App Router, TypeScript e Bun, com arquitetura MVC modular.
+Interface de coleta XLSX e CSV por instrumento da AUDESP Fase V, com carga na API Embras GCC / PC3S de Pindamonhangaba. Next.js App Router, TypeScript e Bun, com arquitetura MVC modular.
 
 ## Desenvolvimento com Docker
 
@@ -54,7 +54,19 @@ bun test
 bun run build
 ```
 
-## Uso
+## Uso por instrumento
+
+1. Escolha termo de fomento, termo de colaboração, convênio, contrato de gestão ou termo de parceria.
+2. Baixe o modelo XLSX com abas ou os modelos CSV das tabelas.
+3. Preencha Ajuste e as tabelas aplicáveis. Detalhes usam chaves: id do contrato para naturezas; CPF para salários e remunerações.
+4. Carregue um XLSX ou selecione os CSVs juntos, incluindo Ajuste.csv. Limites: 5 MB somados e 1.000 registros por tabela.
+5. Corrija as pendências, confira os registros e confirme cada etapa de envio à Embras na ordem apresentada.
+
+Os formatos geram os mesmos dados. O coletor carrega apenas os blocos suportados pela API Embras; a transmissão e complementação da prestação completa à AUDESP permanecem no GCC. Consulte [a organização das planilhas e a cobertura](docs/planilhas-audesp.md).
+
+## CSV avulso
+
+O fluxo anterior está preservado em `/csv`:
 
 1. Selecione um dos cinco tipos de importação e baixe seu modelo.
 2. Preencha as colunas, mantendo os identificadores como texto para preservar zeros.
