@@ -1,22 +1,49 @@
+name: pinda-coletor-dev
 services:
   collector:
-    build: .
+    build:
+      context: .
+      target: development
     ports:
-      - "127.0.0.1:3000:3000"
-    env_file: .env
-    restart: unless-stopped
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    environment:
+      APP_ENV: development
+      DATABASE_EXTERNAL: "false"
+      DATABASE_URL: postgresql://coletor:coletor_dev@database:5432/coletor
+      GCC_KEY: ${GCC_KEY:-}
+      COLLECTOR_ACCESS_TOKEN: ${COLLECTOR_ACCESS_TOKEN:-}
+    volumes:
+      - ./src:/app/src:ro
+      - ./public:/app/public:ro
+      - ./scripts:/app/scripts:ro
+      - ./docs:/app/docs:ro
+    depends_on:
+      database:
+        condition: service_healthy
     healthcheck:
-      test:
-        [
-          "CMD",
-          "bun",
-          "-e",
-          "fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
-        ]
+      test: ["CMD", "bun", "scripts/check-health.ts"]
       interval: 30s
-      timeout: 5s
+      timeout: 15s
+      start_period: 60s
       retries: 3
     networks:
       - collector
+  database:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_USER: coletor
+      POSTGRES_PASSWORD: coletor_dev
+      POSTGRES_DB: coletor
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coletor -d coletor"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - collector
+volumes:
+  postgres_data:
 networks:
   collector:

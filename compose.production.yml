@@ -1,0 +1,25 @@
+name: pinda-coletor-production
+services:
+  collector:
+    build:
+      context: .
+      target: runner
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    environment:
+      APP_ENV: production
+      DATABASE_EXTERNAL: ${DATABASE_EXTERNAL:-true}
+      DATABASE_URL: ${DATABASE_URL:?Defina DATABASE_URL com a connection string PostgreSQL externa}
+      GCC_KEY: ${GCC_KEY:-}
+      COLLECTOR_ACCESS_TOKEN: ${COLLECTOR_ACCESS_TOKEN:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bun", "scripts/check-health.ts"]
+      interval: 30s
+      timeout: 15s
+      start_period: 30s
+      retries: 3
+    networks:
+      - collector
+networks:
+  collector:

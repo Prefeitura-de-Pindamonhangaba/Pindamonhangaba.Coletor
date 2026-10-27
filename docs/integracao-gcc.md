@@ -42,7 +42,7 @@ O relatório mostra contagens e erros individuais recebidos da API, além dos id
 
 ## Arquitetura e segurança
 
-`app/` delega ao controller, que valida a entrada e coordena os services. O catálogo representa o contrato. O service CSV interpreta e valida os dados; o service GCC isola autenticação e comunicação externa. Não há banco nesta etapa.
+`app/` delega ao controller, que valida a entrada e coordena os services. O catálogo representa o contrato. O service CSV interpreta e valida os dados; o service GCC isola autenticação e comunicação externa. PostgreSQL está preparado no ambiente, com verificação de conexão no startup dos containers, mas ainda não há persistência dos dados de importação. Consulte o README para as configurações de desenvolvimento e produção.
 
 O segredo GCC nunca é exposto ao cliente. O código de acesso restringe a rota de envio, há verificação de origem, limite do corpo, destino remoto fixo, bloqueio de redirecionamentos e timeout. Não são gravados logs de tokens, CSVs ou dados pessoais. O relatório baixado contém dados da operação e deve receber o tratamento de acesso e retenção definido pela Prefeitura. Configure HTTPS e restrição de acesso da rede no deploy.
 
