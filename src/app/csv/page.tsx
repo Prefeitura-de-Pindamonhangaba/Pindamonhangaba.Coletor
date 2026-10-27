@@ -1,4 +1,4 @@
-import { ImportPage } from "../../modules/imports/views/import-page";
+import { redirect } from "next/navigation";
 export default function CsvPage() {
-  return <ImportPage />;
+  redirect("/");
 }

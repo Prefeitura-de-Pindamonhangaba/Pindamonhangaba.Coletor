@@ -1,6 +1,6 @@
 # Coletor Municipal
 
-Interface de coleta XLSX e CSV por instrumento da AUDESP Fase V, com carga na API Embras GCC / PC3S de Pindamonhangaba. Next.js App Router, TypeScript e Bun, com arquitetura MVC modular.
+Interface de coleta XLSX por instrumento da AUDESP Fase V, com carga na API Embras GCC / PC3S de Pindamonhangaba. Next.js App Router, TypeScript e Bun, com arquitetura MVC modular.
 
 ## Desenvolvimento com Docker
 
@@ -12,7 +12,7 @@ docker compose up
 
 Abra http://localhost:3000. O Compose constrói a imagem no primeiro uso, inicia PostgreSQL, aguarda sua saúde e sobe Next.js em desenvolvimento, com atualização automática dos arquivos de `src/`. O banco fica em volume persistente, sem porta pública. As credenciais locais são exclusivas de desenvolvimento. Para parar, use `docker compose down` (preserva o banco).
 
-Opcionalmente, copie `.env.example` para `.env` para informar `GCC_KEY`, `COLLECTOR_ACCESS_TOKEN` ou `APP_PORT`. Sem chaves, a preparação e a validação CSV funcionam; o envio real continua bloqueado. O Compose de desenvolvimento fixa o banco local e ignora `DATABASE_URL` externa do `.env`, evitando uso acidental do banco de produção. Após alterar dependências, Dockerfile ou configuração, use `docker compose up --build`.
+Opcionalmente, copie `.env.example` para `.env` para informar `GCC_KEY`, `COLLECTOR_ACCESS_TOKEN` ou `APP_PORT`. Sem chaves, a preparação e a validação XLSX funcionam; o envio real continua bloqueado. O Compose de desenvolvimento fixa o banco local e ignora `DATABASE_URL` externa do `.env`, evitando uso acidental do banco de produção. Após alterar dependências, Dockerfile ou configuração, use `docker compose up --build`.
 
 ## Produção com banco separado
 
@@ -57,23 +57,13 @@ bun run build
 ## Uso por instrumento
 
 1. Escolha termo de fomento, termo de colaboração, convênio, contrato de gestão ou termo de parceria.
-2. Baixe o modelo XLSX com abas ou os modelos CSV das tabelas.
+2. Baixe o modelo XLSX com várias abas.
 3. Preencha Ajuste e as tabelas aplicáveis. Detalhes usam chaves: id do contrato para naturezas; CPF para salários e remunerações.
-4. Carregue um XLSX ou selecione os CSVs juntos, incluindo Ajuste.csv. Limites: 5 MB somados e 1.000 registros por tabela.
+4. Carregue um único XLSX de até 5 MB, com até 1.000 registros por aba.
 5. Corrija as pendências, confira os registros e confirme cada etapa de envio à Embras na ordem apresentada.
 
-Os formatos geram os mesmos dados. O coletor carrega apenas os blocos suportados pela API Embras; a transmissão e complementação da prestação completa à AUDESP permanecem no GCC. Consulte [a organização das planilhas e a cobertura](docs/planilhas-audesp.md).
+O coletor carrega apenas os blocos suportados pela API Embras; a transmissão e complementação da prestação completa à AUDESP permanecem no GCC. Consulte [a organização das planilhas e a cobertura](docs/planilhas-audesp.md).
 
-## CSV avulso
-
-O fluxo anterior está preservado em `/csv`:
-
-1. Selecione um dos cinco tipos de importação e baixe seu modelo.
-2. Preencha as colunas, mantendo os identificadores como texto para preservar zeros.
-3. Selecione o CSV UTF-8, separado por ponto e vírgula ou vírgula. Limites: 2 MB e 1.000 registros.
-4. Corrija as pendências, confira a prévia e informe o ajuste.
-5. Confirme o envio ao ambiente de produção e baixe o relatório.
-
-Consulte [o contrato e os formatos](docs/integracao-gcc.md). Nenhuma importação real é executada nos testes.
+A importação CSV foi descontinuada. A rota antiga `/csv` redireciona à importação XLSX. Nenhuma importação real é executada nos testes.
 
 PostgreSQL já está preparado e sua conexão é verificada nos containers. Não há tabelas, migrações nem persistência de planilhas ou histórico nesta etapa; Drizzle será introduzido quando houver um modelo de dados a persistir. Nenhuma migração é executada automaticamente no deploy.

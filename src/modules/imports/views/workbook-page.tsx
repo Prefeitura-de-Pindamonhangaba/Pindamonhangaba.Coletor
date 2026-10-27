@@ -1,6 +1,5 @@
 "use client";
 import { useRef, useState } from "react";
-import Papa from "papaparse";
 import {
   InstitutionalHeader,
   InstitutionalFooter,
@@ -8,7 +7,6 @@ import {
 import {
   instruments,
   getWorkbookSheets,
-  MODEL_VERSION,
   type WorkbookPreview,
 } from "../models/workbook-catalog";
 import type { ImportKind } from "../models/catalog";
@@ -23,7 +21,6 @@ function download(name: string, content: string, type: string) {
 }
 export function WorkbookPage() {
   const [instrument, setInstrument] = useState(instruments[0]!.id);
-  const [format, setFormat] = useState<"xlsx" | "csv">("xlsx");
   const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<WorkbookPreview | null>(null);
   const [message, setMessage] = useState("");
@@ -59,15 +56,11 @@ export function WorkbookPage() {
     reset();
     if (!selected.length) return;
     if (
-      selected.some(
-        (file) => !file.name.toLowerCase().endsWith(`.${format}`),
-      ) ||
-      (format === "xlsx" && selected.length !== 1) ||
+      selected.some((file) => !file.name.toLowerCase().endsWith(".xlsx")) ||
+      selected.length !== 1 ||
       selected.reduce((sum, file) => sum + file.size, 0) > 5_000_000
     ) {
-      setMessage(
-        "Selecione um XLSX ou os CSVs das tabelas, com até 5 MB no total.",
-      );
+      setMessage("Selecione um único arquivo XLSX de até 5 MB.");
       return;
     }
     lock.current = true;
@@ -131,16 +124,6 @@ export function WorkbookPage() {
       setBusy(false);
     }
   }
-  function csvTemplate(name: string) {
-    const definition = sheets.find((sheet) => sheet.name === name)!;
-    const fields = definition.columns.map((column) => column.key);
-    const data = name === "Ajuste" ? [[MODEL_VERSION, instrument, "", ""]] : [];
-    download(
-      `${name}.csv`,
-      "\uFEFF" + Papa.unparse({ fields, data }, { delimiter: ";" }) + "\r\n",
-      "text/csv;charset=utf-8",
-    );
-  }
   return (
     <div className="shell">
       <InstitutionalHeader />
@@ -156,8 +139,8 @@ export function WorkbookPage() {
               </span>
               <h1>Um ajuste, um conjunto de dados</h1>
               <p>
-                Organize a coleta por instrumento. Escolha Excel com várias abas
-                ou CSVs separados.
+                Organize a coleta por instrumento em uma planilha Excel com
+                várias abas.
               </p>
             </div>
             <span className="status">Coletor → Embras → AUDESP</span>
@@ -167,7 +150,7 @@ export function WorkbookPage() {
               <div className="section-title">
                 <span className="section-number">01</span>
                 <div>
-                  <h2>Prepare os arquivos</h2>
+                  <h2>Prepare a planilha</h2>
                   <p>
                     Um instrumento, um código de ajuste e um exercício por
                     importação.
@@ -190,56 +173,13 @@ export function WorkbookPage() {
                   </option>
                 ))}
               </select>
-              <fieldset className="format-choice">
-                <legend>Formato dos arquivos</legend>
-                <label>
-                  <input
-                    type="radio"
-                    name="format"
-                    checked={format === "xlsx"}
-                    disabled={busy}
-                    onChange={() => {
-                      setFormat("xlsx");
-                      reset();
-                    }}
-                  />
-                  <span>
-                    <strong>Excel (.xlsx)</strong>
-                    <small>Um arquivo com todas as abas</small>
-                  </span>
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="format"
-                    checked={format === "csv"}
-                    disabled={busy}
-                    onChange={() => {
-                      setFormat("csv");
-                      reset();
-                    }}
-                  />
-                  <span>
-                    <strong>CSV (.csv)</strong>
-                    <small>Formato aberto, um arquivo por tabela</small>
-                  </span>
-                </label>
-              </fieldset>
-              {format === "xlsx" ? (
-                <a
-                  className="button secondary"
-                  href={`/templates/${instrument}.xlsx`}
-                  download
-                >
-                  ↓ Baixar modelo de {current.name.toLowerCase()}
-                </a>
-              ) : (
-                <p className="field-help">
-                  Baixe os modelos na lista de tabelas abaixo. Envie Ajuste.csv
-                  junto com os CSVs que contêm dados. Preserve os nomes dos
-                  arquivos.
-                </p>
-              )}
+              <a
+                className="button secondary workbook-template"
+                href={`/templates/${instrument}.xlsx`}
+                download
+              >
+                ↓ Baixar modelo de {current.name.toLowerCase()}
+              </a>
               <div
                 className="dropzone workbook-drop"
                 onDragOver={(event) => event.preventDefault()}
@@ -252,27 +192,22 @@ export function WorkbookPage() {
                 <strong>
                   {files.length
                     ? files.map((file) => file.name).join(", ")
-                    : format === "xlsx"
-                      ? "Arraste sua planilha com várias abas"
-                      : "Arraste os arquivos CSV deste ajuste"}
+                    : "Arraste sua planilha com várias abas"}
                 </strong>
                 <p>
-                  {format === "xlsx"
-                    ? "Preencha as abas do modelo e carregue o arquivo completo."
-                    : "Selecione todos os CSVs de uma vez. Não misture instrumentos ou ajustes."}
+                  Preencha as abas do modelo e carregue o arquivo XLSX completo.
                 </p>
                 <label
                   className="button secondary file-button"
                   htmlFor="workbook-file"
                 >
-                  {files.length ? "Trocar arquivos" : "Selecionar arquivos"}
+                  {files.length ? "Trocar arquivo" : "Selecionar arquivo"}
                 </label>
                 <input
                   id="workbook-file"
                   ref={input}
                   type="file"
-                  accept={format === "xlsx" ? ".xlsx" : ".csv"}
-                  multiple={format === "csv"}
+                  accept=".xlsx"
                   disabled={busy}
                   onChange={(event) =>
                     void load(Array.from(event.target.files ?? []))
@@ -290,7 +225,7 @@ export function WorkbookPage() {
               </p>
             </section>
             <aside className="guide panel" id="guia">
-              <span className="eyebrow">MESMA ESTRUTURA NOS DOIS FORMATOS</span>
+              <span className="eyebrow">PREENCHIMENTO DA PLANILHA</span>
               <h2>Dados relacionados, sem JSON nas células.</h2>
               <div className="guide-item">
                 <b>1</b>
@@ -330,17 +265,13 @@ export function WorkbookPage() {
           </div>
           <section className="panel">
             <h2>Abas e tabelas de {current.name.toLowerCase()}</h2>
-            <p>
-              As abas sem movimento podem ficar apenas com o cabeçalho. No CSV,
-              tabelas vazias podem ser omitidas.
-            </p>
+            <p>As abas sem movimento podem ficar apenas com o cabeçalho.</p>
             <div className="table-scroll">
               <table>
                 <thead>
                   <tr>
                     <th>Tabela / aba</th>
                     <th>Como preencher</th>
-                    <th>Modelo CSV</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -350,15 +281,6 @@ export function WorkbookPage() {
                         <strong>{sheet.name}</strong>
                       </td>
                       <td>{sheet.description}</td>
-                      <td>
-                        <button
-                          disabled={busy}
-                          className="text-button"
-                          onClick={() => csvTemplate(sheet.name)}
-                        >
-                          ↓ {sheet.name}.csv
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>

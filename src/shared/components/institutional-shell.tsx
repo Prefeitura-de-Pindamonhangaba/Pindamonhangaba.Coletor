@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export function InstitutionalHeader({ csv = false }: { csv?: boolean }) {
+export function InstitutionalHeader() {
   return (
     <>
       <a className="skip-link" href="#importacao">
@@ -38,11 +38,8 @@ export function InstitutionalHeader({ csv = false }: { csv?: boolean }) {
       </div>
       <div className="panel-nav-band">
         <nav className="container panel-nav" aria-label="Navegação principal">
-          <Link href="/" aria-current={!csv ? "page" : undefined}>
+          <Link href="/" aria-current="page">
             Importar por instrumento
-          </Link>
-          <Link href="/csv" aria-current={csv ? "page" : undefined}>
-            CSV avulso
           </Link>
           <a href="#guia">Guia de preenchimento</a>
           <a

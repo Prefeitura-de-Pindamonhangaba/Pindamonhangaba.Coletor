@@ -1,3 +1,10 @@
-import { importController } from "../../../modules/imports/controllers/import-controller";
 export const runtime = "nodejs";
-export const POST = importController;
+export function POST() {
+  return Response.json(
+    {
+      error:
+        "A importação CSV foi descontinuada. Utilize um arquivo XLSX na importação por instrumento.",
+    },
+    { status: 410, headers: { "Cache-Control": "no-store" } },
+  );
+}

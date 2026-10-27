@@ -3,7 +3,6 @@ import {
   createTemplate,
   parseCsv,
 } from "../src/modules/imports/services/csv-service";
-import { importController } from "../src/modules/imports/controllers/import-controller";
 import Papa from "papaparse";
 
 const row = {
@@ -59,15 +58,5 @@ describe("Importação CSV", () => {
     expect(result.errors.some((error) => error.field === "remuneracoes")).toBe(
       true,
     );
-  });
-  test("bloqueia origem externa antes de chamar a integração", async () => {
-    const response = await importController(
-      new Request("http://localhost/api/imports", {
-        method: "POST",
-        headers: { origin: "https://externo.example" },
-        body: "{}",
-      }),
-    );
-    expect(response.status).toBe(403);
   });
 });

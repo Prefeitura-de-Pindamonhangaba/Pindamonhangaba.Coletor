@@ -22,25 +22,13 @@ const MAX_EXPANDED_SIZE = 25_000_000;
 
 export async function readWorkbookFiles(files: File[]): Promise<InputTables> {
   if (
-    !files.length ||
-    files.length > 12 ||
-    files.reduce((sum, file) => sum + file.size, 0) > MAX_FILE_SIZE
+    files.length !== 1 ||
+    !files[0]!.name.toLowerCase().endsWith(".xlsx") ||
+    files[0]!.size > MAX_FILE_SIZE
   )
-    throw new WorkbookError(
-      "Selecione um XLSX ou os CSVs do ajuste, com até 5 MB no total.",
-    );
-  const isExcel = files.some((file) =>
-    file.name.toLowerCase().endsWith(".xlsx"),
-  );
-  if (
-    isExcel &&
-    (files.length !== 1 || !files[0]!.name.toLowerCase().endsWith(".xlsx"))
-  )
-    throw new WorkbookError(
-      "Envie um único XLSX ou vários CSVs, sem misturar os formatos.",
-    );
+    throw new WorkbookError("Selecione um único arquivo XLSX de até 5 MB.");
   const tables: InputTables = {};
-  if (isExcel) {
+  {
     const bytes = Buffer.from(await files[0]!.arrayBuffer());
     try {
       const directory = await Open.buffer(bytes);
@@ -93,61 +81,6 @@ export async function readWorkbookFiles(files: File[]): Promise<InputTables> {
         : new WorkbookError(
             "XLSX inválido, protegido ou incompatível. Utilize o modelo disponível.",
           );
-    }
-  } else {
-    for (const file of files) {
-      if (!file.name.toLowerCase().endsWith(".csv"))
-        throw new WorkbookError(
-          "Formato não permitido. Utilize XLSX ou CSV UTF-8.",
-        );
-      const name = file.name.replace(/\.csv$/i, "");
-      if (
-        Object.keys(tables).some(
-          (key) => key.toLowerCase() === name.toLowerCase(),
-        )
-      )
-        throw new WorkbookError(
-          "Há arquivos CSV repetidos para a mesma tabela.",
-        );
-      let text: string;
-      try {
-        text = new TextDecoder("utf-8", { fatal: true }).decode(
-          await file.arrayBuffer(),
-        );
-      } catch {
-        throw new WorkbookError("Salve os arquivos CSV em UTF-8.");
-      }
-      const result = Papa.parse<string[]>(text.replace(/^\uFEFF/, ""), {
-        skipEmptyLines: false,
-      });
-      if (result.errors.some((error) => error.code !== "UndetectableDelimiter"))
-        throw new WorkbookError(
-          `CSV ${file.name}: confira aspas e separadores.`,
-        );
-      const headers = (result.data[0] ?? []).map((value) => value.trim());
-      if (headers.length > 40)
-        throw new WorkbookError(`CSV ${file.name}: limite de 40 colunas.`);
-      const rows: InputRow[] = [];
-      result.data.slice(1).forEach((row, index) => {
-        if (!row.some((cell) => cell.trim())) return;
-        if (row.length !== headers.length)
-          throw new WorkbookError(
-            `CSV ${file.name}, linha ${index + 2}: número de células diferente do cabeçalho.`,
-          );
-        if (row.some((value) => value.length > 10000))
-          throw new WorkbookError(
-            `CSV ${file.name}: célula acima de 10.000 caracteres.`,
-          );
-        rows.push({
-          line: index + 2,
-          values: Object.fromEntries(
-            headers.map((header, col) => [header, row[col]?.trim() ?? ""]),
-          ),
-        });
-      });
-      if (rows.length > 1000)
-        throw new WorkbookError(`CSV ${file.name}: limite de 1.000 registros.`);
-      tables[name] = { headers, rows };
     }
   }
   return tables;

@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import Papa from "papaparse";
 import {
   readWorkbookFiles,
   prepareWorkbook,
@@ -177,46 +176,13 @@ describe("Planilhas por instrumento", () => {
       true,
     );
   });
-  test("os CSVs geram o mesmo payload das tabelas em memória", async () => {
-    const input = fixture();
-    const files = Object.entries(input).map(
-      ([name, value]) =>
-        new File(
-          [
-            "\uFEFF" +
-              Papa.unparse(
-                value.rows.map((row) => row.values),
-                { delimiter: ";" },
-              ),
-          ],
-          `${name}.csv`,
-        ),
-    );
-    const result = prepareWorkbook(
-      await readWorkbookFiles(files),
-      "termo_fomento",
-    );
-    expect(result.preview.errors).toEqual([]);
-    expect(result.records).toEqual(
-      prepareWorkbook(input, "termo_fomento").records,
-    );
-  });
-  test("rejeita arquivos repetidos, mistura XLSX/CSV e UTF-8 inválido", async () => {
+  test("rejeita CSV e múltiplos arquivos", async () => {
     await expect(
-      readWorkbookFiles([
-        new File(["a\nb"], "Ajuste.csv"),
-        new File(["a\nb"], "ajuste.csv"),
-      ]),
-    ).rejects.toThrow("repetidos");
+      readWorkbookFiles([new File(["a;b\n1;2"], "Ajuste.csv")]),
+    ).rejects.toThrow("único arquivo XLSX");
     await expect(
-      readWorkbookFiles([
-        new File([""], "modelo.xlsx"),
-        new File([""], "Ajuste.csv"),
-      ]),
-    ).rejects.toThrow("misturar");
-    await expect(
-      readWorkbookFiles([new File([new Uint8Array([0xff])], "Ajuste.csv")]),
-    ).rejects.toThrow("UTF-8");
+      readWorkbookFiles([new File([""], "a.xlsx"), new File([""], "b.xlsx")]),
+    ).rejects.toThrow("único arquivo XLSX");
   });
   test("valida os cinco modelos XLSX disponibilizados para download", async () => {
     for (const instrument of instruments) {
@@ -239,17 +205,16 @@ describe("Planilhas por instrumento", () => {
       ).toBe(true);
     }
   });
-  test("preview aceita CSV sem credenciais e não transmite dados ao GCC", async () => {
+  test("preview aceita modelo XLSX sem credenciais", async () => {
     const form = new FormData();
     form.set("instrument", "termo_fomento");
-    for (const [name, value] of Object.entries(fixture()))
-      form.append(
-        "files",
-        new File(
-          [Papa.unparse(value.rows.map((row) => row.values))],
-          `${name}.csv`,
-        ),
-      );
+    form.append(
+      "files",
+      new File(
+        [await Bun.file("public/templates/termo_fomento.xlsx").arrayBuffer()],
+        "modelo.xlsx",
+      ),
+    );
     const result = await workbookController(
       new Request("http://localhost/api/workbooks", {
         method: "POST",
@@ -257,7 +222,19 @@ describe("Planilhas por instrumento", () => {
       }),
     );
     expect(result.status).toBe(200);
-    expect((await result.json()).errors).toEqual([]);
+    expect((await result.json()).errors).toHaveLength(3);
+  });
+  test("rota rejeita carga CSV", async () => {
+    const form = new FormData();
+    form.set("instrument", "termo_fomento");
+    form.append("files", new File(["a;b\n1;2"], "Ajuste.csv"));
+    const result = await workbookController(
+      new Request("http://localhost/api/workbooks", {
+        method: "POST",
+        body: form,
+      }),
+    );
+    expect(result.status).toBe(400);
   });
   test("rota bloqueia origem externa", async () => {
     const result = await workbookController(

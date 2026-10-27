@@ -2,13 +2,11 @@
 
 O coletor organiza **um conjunto de arquivos por tipo de instrumento, código de ajuste e exercício**. O ajuste precisa existir na Embras. A transmissão da prestação completa à AUDESP continua a cargo do GCC; esta implementação não chama os endpoints do TCE.
 
-## Formatos equivalentes
+## Formato de importação
 
-- **XLSX:** um único arquivo com várias abas. Há um modelo para termo de fomento, termo de colaboração, convênio, contrato de gestão e termo de parceria.
-- **CSV:** um arquivo UTF-8 por tabela, com o nome da aba e extensão `.csv`. Selecione todos os arquivos do ajuste juntos, incluindo `Ajuste.csv`. São aceitos separadores vírgula e ponto e vírgula. Tabelas vazias podem ser omitidas.
-- **CSV avulso:** permanece disponível em `/csv` para quem já utiliza a importação anterior. Nesse fluxo, listas continuam como JSON na célula; os novos modelos por instrumento separam as listas em tabelas.
+Somente XLSX: um único arquivo com várias abas, por instrumento, ajuste e exercício. Há modelos para termo de fomento, termo de colaboração, convênio, contrato de gestão e termo de parceria. CSV não é aceito.
 
-XLSX e CSV passam pelas mesmas transformações e validações. O XLSX acrescenta Orientacoes e Dicionario; essas duas abas são auxiliares e não são enviadas. Os dados usam cabeçalho na primeira linha. Limite: 5 MB somados e 1.000 registros por tabela. Abas ou colunas desconhecidas bloqueiam a carga, evitando perda silenciosa de dados.
+Orientacoes e Dicionario são abas auxiliares e não são enviadas. As abas de dados usam cabeçalho na primeira linha. Limite: 5 MB por arquivo e 1.000 registros por tabela. Abas ou colunas desconhecidas bloqueiam a carga. Abas sem movimento podem ficar apenas com os cabeçalhos. A antiga página `/csv` redireciona à tela principal, e o endpoint `/api/imports` retorna HTTP 410.
 
 ## Organização das tabelas
 
@@ -55,4 +53,4 @@ Fontes consultadas em 27/10/2026:
 - https://www.tce.sp.gov.br/audesp/documentacao/audesp-repasses-ao-terceiro-setor-jsonschemas
 - https://siapegov.pindamonhangaba.sp.gov.br/gcc-web/api-pc3s-swagger
 
-As bibliotecas ExcelJS e unzipper fazem leitura e verificação do XLSX no servidor; JSZip normaliza o namespace OpenXML quando necessário para compatibilidade com ExcelJS. Papa Parse continua responsável por CSV. Os modelos foram produzidos com a ferramenta de planilhas e são arquivos estáticos em `public/templates/`.
+As bibliotecas ExcelJS e unzipper fazem leitura e verificação do XLSX no servidor; JSZip normaliza o namespace OpenXML quando necessário para compatibilidade com ExcelJS. Papa Parse é utilizado apenas internamente na normalização e validação dos registros; não há opção de upload CSV. Os modelos foram produzidos com a ferramenta de planilhas e são arquivos estáticos em `public/templates/`.

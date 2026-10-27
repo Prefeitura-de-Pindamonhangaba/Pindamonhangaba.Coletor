@@ -1106,48 +1106,8 @@ td {
     box-shadow: none;
   }
 }
-.format-choice {
-  border: 0;
-  padding: 0;
-  margin: 24px 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.format-choice legend {
-  font-size: 0.875rem;
-  color: var(--color-brand);
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-.format-choice label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid var(--color-control-border);
-  border-radius: var(--radius-control);
-  padding: 12px 16px;
-  flex: 1;
-  margin: 0;
-  cursor: pointer;
-}
-.format-choice label:has(input:checked) {
-  background: var(--color-surface-success);
-  border-color: var(--color-brand-accent);
-}
-.format-choice input[type="radio"] {
-  accent-color: var(--color-brand-accent);
-  width: 18px;
-  height: 18px;
-  min-height: 18px;
-  flex: 0 0 18px;
-  padding: 0;
-  margin: 0;
-}
-.format-choice small {
-  display: block;
-  font-weight: 400;
-  font-size: 0.75rem;
+.workbook-template {
+  margin-top: 24px;
 }
 .workbook-drop {
   margin-top: 24px;
@@ -1193,9 +1153,4 @@ td {
 .notice a {
   text-decoration: underline;
   text-underline-offset: 3px;
-}
-@media (max-width: 700px) {
-  .format-choice {
-    flex-direction: column;
-  }
 }
