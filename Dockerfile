@@ -24,7 +24,11 @@ COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=builder --chown=bun:bun /app/.next ./.next
 COPY --from=builder --chown=bun:bun /app/public ./public
 COPY --from=builder --chown=bun:bun /app/scripts ./scripts
-COPY --from=builder --chown=bun:bun /app/src/shared/lib/env.ts ./src/shared/lib/env.ts
+COPY --from=builder --chown=bun:bun /app/src/shared/lib ./src/shared/lib
+COPY --from=builder --chown=bun:bun /app/src/modules/auth ./src/modules/auth
+COPY --from=builder --chown=bun:bun /app/src/modules/credentials ./src/modules/credentials
+COPY --from=builder --chown=bun:bun /app/drizzle ./drizzle
+COPY --from=builder --chown=bun:bun /app/drizzle.config.ts ./drizzle.config.ts
 USER bun
 EXPOSE 3000
 CMD ["bun", "scripts/start-container.ts"]

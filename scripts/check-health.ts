@@ -1,5 +1,6 @@
 import { getRuntimeConfig } from "../src/shared/lib/env";
 import { checkDatabase } from "./check-database";
+import { isKeycloakEnabled } from "../src/modules/auth/services/keycloak-config";
 
 try {
   const config = getRuntimeConfig(process.env);
@@ -7,7 +8,7 @@ try {
     signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) process.exit(1);
-  await checkDatabase(config.databaseUrl);
+  await checkDatabase(config.databaseUrl, isKeycloakEnabled());
 } catch {
   process.exit(1);
 }

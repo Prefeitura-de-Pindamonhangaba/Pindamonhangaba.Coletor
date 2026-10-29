@@ -1154,3 +1154,92 @@ td {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.login-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 0;
+  padding-block: 56px;
+  min-height: 65vh;
+}
+.login-introduction {
+  padding: 48px;
+  background: var(--color-brand);
+  color: var(--color-on-brand);
+  border-radius: var(--radius-panel) 0 0 var(--radius-panel);
+  border-bottom: 6px solid var(--color-accent-yellow);
+}
+.login-introduction h1 {
+  color: var(--color-on-brand);
+  font-size: clamp(3rem, 6vw, 4.5rem);
+  margin-block: 24px;
+}
+.login-introduction h1 span {
+  color: var(--color-accent-yellow);
+}
+.login-introduction .eyebrow {
+  background: var(--color-accent-yellow);
+  color: var(--color-brand);
+}
+.login-panel {
+  padding: 40px;
+  background: var(--color-surface);
+  border-top: 5px solid var(--color-brand-accent);
+  border-radius: 0 var(--radius-panel) var(--radius-panel) 0;
+  box-shadow: var(--shadow-panel);
+}
+.login-panel h2 {
+  margin-bottom: 20px;
+}
+.login-panel .button {
+  width: 100%;
+  margin-block: 12px 24px;
+}
+.form-error {
+  color: var(--color-secondary-red);
+  background: var(--color-surface-danger);
+  padding: 12px;
+  border-left: 4px solid var(--color-secondary-red);
+  border-radius: var(--radius-control);
+  font-size: 0.875rem;
+}
+.session-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 0.875rem;
+}
+.session-controls p {
+  font-size: 0.75rem;
+}
+.form-actions,
+.credential-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+.panel form label {
+  margin-top: 18px;
+}
+.send-area a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 800px) {
+  .login-layout {
+    grid-template-columns: 1fr;
+  }
+  .login-introduction {
+    padding: 32px;
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  }
+  .login-panel {
+    padding: 24px;
+    border-radius: 0 0 var(--radius-panel) var(--radius-panel);
+  }
+  .session-controls {
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: end;
+  }
+}

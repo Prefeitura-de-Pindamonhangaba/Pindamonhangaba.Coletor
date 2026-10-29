@@ -10,8 +10,14 @@ services:
       APP_ENV: production
       DATABASE_EXTERNAL: ${DATABASE_EXTERNAL:-true}
       DATABASE_URL: ${DATABASE_URL:?Defina DATABASE_URL com a connection string PostgreSQL externa}
-      GCC_KEY: ${GCC_KEY:-}
-      COLLECTOR_ACCESS_TOKEN: ${COLLECTOR_ACCESS_TOKEN:-}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      INTEGRATION_KEYS_ENCRYPTION_KEY: ${INTEGRATION_KEYS_ENCRYPTION_KEY:-}
+      KEYCLOAK_ENABLED: ${KEYCLOAK_ENABLED:-false}
+      KEYCLOAK_ALLOW_INSECURE_HTTP: ${KEYCLOAK_ALLOW_INSECURE_HTTP:-false}
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "bun", "scripts/check-health.ts"]

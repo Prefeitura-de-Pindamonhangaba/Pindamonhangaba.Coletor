@@ -13,17 +13,10 @@ export async function sendRecords(
   kind: ImportKind,
   code: string,
   records: Record<string, unknown>[],
+  gccKey: string,
 ) {
-  const config = z
-    .object({
-      GCC_KEY: z.string().min(1),
-      COLLECTOR_ACCESS_TOKEN: z.string().min(32),
-    })
-    .safeParse(process.env);
-  if (!config.success)
-    throw new IntegrationError(
-      "Configure a chave GCC e o acesso ao coletor no servidor.",
-    );
+  if (!z.string().min(1).safeParse(gccKey).success)
+    throw new IntegrationError("Selecione uma chave GCC válida para enviar.");
   const base =
     "https://siapegov.pindamonhangaba.sp.gov.br/gcc-web/api/integracoes";
   async function request(path: string, body: unknown, token?: string) {
@@ -62,7 +55,7 @@ export async function sendRecords(
   }
   const login = z
     .object({ token: z.string().min(1) })
-    .safeParse(await request("/login", { gcc_key: config.data.GCC_KEY }));
+    .safeParse(await request("/login", { gcc_key: gccKey }));
   if (!login.success)
     throw new IntegrationError(
       "A autenticação retornou uma resposta inválida.",

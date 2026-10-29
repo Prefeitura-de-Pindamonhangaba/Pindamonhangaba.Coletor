@@ -10,9 +10,9 @@ Pré-requisito: Docker com Docker Compose. Não precisa instalar Bun no host nem
 docker compose up
 ```
 
-Abra http://localhost:3000. O Compose constrói a imagem no primeiro uso, inicia PostgreSQL, aguarda sua saúde e sobe Next.js em desenvolvimento, com atualização automática dos arquivos de `src/`. O banco fica em volume persistente, sem porta pública. As credenciais locais são exclusivas de desenvolvimento. Para parar, use `docker compose down` (preserva o banco).
+Abra http://localhost:3000. O Compose constrói a imagem no primeiro uso, inicia PostgreSQL, aguarda sua saúde e sobe Next.js em desenvolvimento, com atualização automática dos arquivos de `src/`. As migrações são aplicadas automaticamente no banco de desenvolvimento. O banco fica em volume persistente, sem porta pública. As credenciais locais são exclusivas de desenvolvimento. Para parar, use `docker compose down` (preserva o banco).
 
-Opcionalmente, copie `.env.example` para `.env` para informar `GCC_KEY`, `COLLECTOR_ACCESS_TOKEN` ou `APP_PORT`. Sem chaves, a preparação e a validação XLSX funcionam; o envio real continua bloqueado. O Compose de desenvolvimento fixa o banco local e ignora `DATABASE_URL` externa do `.env`, evitando uso acidental do banco de produção. Após alterar dependências, Dockerfile ou configuração, use `docker compose up --build`.
+Copie `.env.example` para `.env` quando for configurar o Keycloak. Sem essa configuração, a tela de login fica disponível, mas as páginas e APIs internas permanecem bloqueadas. Consulte [login institucional e chaves pessoais](docs/autenticacao-e-chaves.md). Após alterar dependências ou Dockerfile, use `docker compose up --build`.
 
 ## Produção com banco separado
 
@@ -21,20 +21,27 @@ Configure `.env` (não versionado):
 ```dotenv
 DATABASE_EXTERNAL=true
 DATABASE_URL=postgresql://usuario:senha@servidor:5432/coletor?sslmode=require
-GCC_KEY=
-COLLECTOR_ACCESS_TOKEN=
+APP_URL=https://coletor.exemplo.sp.gov.br
+KEYCLOAK_ENABLED=true
+KEYCLOAK_ISSUER=https://identidade.exemplo.sp.gov.br/realms/municipio
+KEYCLOAK_CLIENT_ID=pinda-coletor
+KEYCLOAK_CLIENT_SECRET=
+BETTER_AUTH_SECRET=
+INTEGRATION_KEYS_ENCRYPTION_KEY=
 APP_PORT=3000
 ```
 
 Use credenciais reais somente no ambiente de destino. Caracteres especiais na senha devem ser codificados para URL. O banco deve existir e ser acessível pela rede do container.
 
 ```powershell
-docker compose -f compose.production.yml up --build -d
+docker compose -f compose.production.yml build
+docker compose -f compose.production.yml run --rm collector bun run db:migrate
+docker compose -f compose.production.yml up -d
 ```
 
 Esse arquivo é independente: **não combine com `compose.yml`**, pois o padrão contém o banco local. Produção inicia apenas a aplicação, compilada, com usuário não privilegiado. `DATABASE_EXTERNAL=true` é obrigatório. O Compose recusa `DATABASE_URL` ausente/vazia; a aplicação também valida o formato com Zod e executa `SELECT 1` antes de abrir o servidor. Se a configuração ou conexão falhar, o processo encerra com mensagem sem credenciais. O healthcheck verifica aplicação e banco.
 
-O serviço publica somente em localhost; configure proxy HTTPS para acesso externo. `APP_PORT` permite mudar a porta, inclusive para executar dev e produção simultaneamente com portas diferentes. Credenciais GCC podem ser adicionadas depois, mas continuam obrigatórias para envio real. A primeira versão usa um código compartilhado para restringir o envio; integração com identidade institucional e permissões individuais deve anteceder uma abertura ampla do serviço.
+O serviço publica somente em localhost; configure proxy HTTPS para acesso externo. Use cliente Keycloak e banco próprios do Coletor, no mesmo realm institucional do DadosPinda. Gere os dois segredos conforme `.env.example`, aplique as migrações e vincule os usuários autorizados seguindo [o guia de configuração](docs/autenticacao-e-chaves.md). Produção não executa migrações automaticamente.
 
 ## Executar sem Docker
 
@@ -42,10 +49,11 @@ O serviço publica somente em localhost; configure proxy HTTPS para acesso exter
 bun install --frozen-lockfile
 Copy-Item .env.example .env
 # Configure as variáveis no arquivo .env.
+bun run db:migrate
 bun run dev
 ```
 
-Abra http://localhost:3000. Sem credenciais é possível preparar, validar e conferir os arquivos. O envio exige `GCC_KEY` no servidor e `COLLECTOR_ACCESS_TOKEN` com pelo menos 32 caracteres. O operador informa apenas o código de acesso ao coletor, mantido em memória no navegador. Nunca forneça a chave GCC ao navegador.
+O login usa Keycloak via Better Auth, sem senha local ou cadastro público. Depois de entrar, cadastre suas chaves em **Minhas chaves**. Cada usuário pode ter várias chaves GCC e de outros sistemas. Os segredos ficam criptografados no banco e nunca são retornados na listagem. Na importação, escolha a chave GCC ativa que será utilizada em todas as etapas.
 
 ```powershell
 bun run lint
@@ -56,14 +64,15 @@ bun run build
 
 ## Uso por instrumento
 
-1. Escolha termo de fomento, termo de colaboração, convênio, contrato de gestão ou termo de parceria.
-2. Baixe o modelo XLSX com várias abas.
-3. Preencha Ajuste e as tabelas aplicáveis. Detalhes usam chaves: id do contrato para naturezas; CPF para salários e remunerações.
-4. Carregue um único XLSX de até 5 MB, com até 1.000 registros por aba.
-5. Corrija as pendências, confira os registros e confirme cada etapa de envio à Embras na ordem apresentada.
+1. Entre com sua conta institucional e cadastre ao menos uma chave GCC em Minhas chaves.
+2. Escolha termo de fomento, termo de colaboração, convênio, contrato de gestão ou termo de parceria.
+3. Baixe o modelo XLSX com várias abas.
+4. Preencha Ajuste e as tabelas aplicáveis. Detalhes usam chaves: id do contrato para naturezas; CPF para salários e remunerações.
+5. Carregue um único XLSX de até 5 MB, com até 1.000 registros por aba.
+6. Corrija as pendências, confira os registros, selecione a chave GCC e confirme cada etapa de envio.
 
 O coletor carrega apenas os blocos suportados pela API Embras; a transmissão e complementação da prestação completa à AUDESP permanecem no GCC. Consulte [a organização das planilhas e a cobertura](docs/planilhas-audesp.md).
 
 A importação CSV foi descontinuada. A rota antiga `/csv` redireciona à importação XLSX. Nenhuma importação real é executada nos testes.
 
-PostgreSQL já está preparado e sua conexão é verificada nos containers. Não há tabelas, migrações nem persistência de planilhas ou histórico nesta etapa; Drizzle será introduzido quando houver um modelo de dados a persistir. Nenhuma migração é executada automaticamente no deploy.
+PostgreSQL/Drizzle persistem usuários, sessões, identidades OIDC e chaves pessoais criptografadas. Planilhas e relatórios de importação continuam processados em memória. Não há armazenamento de arquivos pessoais no banco.

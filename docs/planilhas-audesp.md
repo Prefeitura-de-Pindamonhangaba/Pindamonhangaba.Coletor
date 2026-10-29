@@ -33,7 +33,7 @@ Datas: AAAA-MM-DD ou células de data Excel. CPF/CNPJ e códigos: texto para pre
 
 O preview recebe os arquivos pelo backend, processa em memória e não transmite dados à Embras. Não há persistência desses arquivos no banco. O servidor limita o corpo HTTP e o tamanho expandido do XLSX, recusa macros e vínculos externos e verifica o contrato dos registros antes de autorizar o envio.
 
-O envio exige o código de acesso ao coletor, a chave GCC no servidor e confirmação do operador. Cada etapa é revalidada a partir dos arquivos originais. Ordem: contratos, documentos fiscais, funcionários, servidores cedidos quando aplicáveis, pagamentos. Etapas vazias são omitidas.
+O preview e o envio exigem sessão institucional. O envio também exige a seleção de uma chave GCC ativa pertencente ao usuário e confirmação do operador. Cada etapa é revalidada a partir dos arquivos originais. Ordem: contratos, documentos fiscais, funcionários, servidores cedidos quando aplicáveis, pagamentos. Etapas vazias são omitidas.
 
 Cada etapa chama apenas o endpoint Embras já documentado. Após o retorno, o operador confirma a próxima etapa. Em erro de comunicação, erro HTTP ou sucesso parcial, o fluxo é interrompido para revisão. Não há repetição automática nem transação global entre endpoints. O relatório inclui os resultados de cada etapa concluída; em sucesso parcial, prepare somente os registros pendentes. O controle de etapas desta versão é mantido em memória no navegador; recarregar a página perde esse controle. Confira sempre os registros no GCC antes de um novo envio.
 

@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import Link from "next/link";
 import {
   InstitutionalHeader,
   InstitutionalFooter,
@@ -19,13 +20,19 @@ function download(name: string, content: string, type: string) {
   anchor.click();
   URL.revokeObjectURL(url);
 }
-export function WorkbookPage() {
+export function WorkbookPage({
+  userName,
+  credentials,
+}: {
+  userName: string;
+  credentials: { id: string; label: string }[];
+}) {
   const [instrument, setInstrument] = useState(instruments[0]!.id);
   const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<WorkbookPreview | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [access, setAccess] = useState("");
+  const [credentialId, setCredentialId] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [results, setResults] = useState<
     Partial<Record<ImportKind, Record<string, unknown>>>
@@ -92,9 +99,9 @@ export function WorkbookPage() {
     try {
       const form = formData(files);
       form.set("kind", next.kind);
+      form.set("credentialId", credentialId);
       const response = await fetch("/api/workbooks?action=send", {
         method: "POST",
-        headers: { Authorization: `Bearer ${access}` },
         body: form,
       });
       const body = (await response.json()) as Record<string, unknown>;
@@ -126,7 +133,7 @@ export function WorkbookPage() {
   }
   return (
     <div className="shell">
-      <InstitutionalHeader />
+      <InstitutionalHeader userName={userName} />
       <div className="workspace">
         <main id="importacao">
           <div className="breadcrumb">
@@ -408,17 +415,36 @@ export function WorkbookPage() {
                     ))}
                   </ol>
                   <div className="send-area">
-                    <label htmlFor="access-token">
-                      Código de acesso ao coletor
+                    <label htmlFor="gcc-credential">
+                      Chave GCC para este envio
                     </label>
-                    <input
-                      id="access-token"
-                      type="password"
-                      autoComplete="off"
-                      value={access}
-                      disabled={busy}
-                      onChange={(event) => setAccess(event.target.value)}
-                    />
+                    <select
+                      id="gcc-credential"
+                      value={credentialId}
+                      disabled={
+                        busy || blocked || Object.keys(results).length > 0
+                      }
+                      onChange={(event) => {
+                        setCredentialId(event.target.value);
+                        setConfirmed(false);
+                      }}
+                      required
+                    >
+                      <option value="">Selecione uma chave da sua conta</option>
+                      {credentials.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="field-help">
+                      {credentials.length
+                        ? "Confira se a chave corresponde à entidade do ajuste. A mesma chave será usada em todas as etapas."
+                        : "Você ainda não tem chaves GCC ativas."}{" "}
+                      <Link href="/settings/credentials">
+                        Gerenciar minhas chaves
+                      </Link>
+                    </p>
                     <label className="checkbox">
                       <input
                         type="checkbox"
@@ -428,13 +454,13 @@ export function WorkbookPage() {
                         }
                         onChange={(event) => setConfirmed(event.target.checked)}
                       />
-                      Conferi os arquivos e autorizo o envio para o ajuste{" "}
-                      {preview.code} na Embras (produção).
+                      Conferi os arquivos e a chave selecionada e autorizo o
+                      envio para o ajuste {preview.code} na Embras (produção).
                     </label>
                     <button
                       className="button primary"
                       disabled={
-                        busy || !confirmed || !access || !next || blocked
+                        busy || !confirmed || !credentialId || !next || blocked
                       }
                       onClick={() => void sendNext()}
                     >

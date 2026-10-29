@@ -8,8 +8,18 @@ import {
   getWorkbookSheets,
   instruments,
 } from "../src/modules/imports/models/workbook-catalog";
-import { workbookController } from "../src/modules/imports/controllers/workbook-controller";
+import { createWorkbookController } from "../src/modules/imports/controllers/workbook-controller";
 
+const workbookController = createWorkbookController({
+  getPrincipal: async () => ({
+    id: "11111111-1111-4111-8111-111111111111",
+    name: "Usuário de teste",
+  }),
+  getGccSecret: async () => "mock-key",
+  sendRecords: async () => {
+    throw new Error("O teste de preview não deve transmitir dados.");
+  },
+});
 function table(rows: Record<string, string>[]) {
   return {
     headers: Object.keys(rows[0] ?? {}),
@@ -205,7 +215,7 @@ describe("Planilhas por instrumento", () => {
       ).toBe(true);
     }
   });
-  test("preview aceita modelo XLSX sem credenciais", async () => {
+  test("preview aceita modelo XLSX para usuário autenticado", async () => {
     const form = new FormData();
     form.set("instrument", "termo_fomento");
     form.append(
@@ -218,6 +228,7 @@ describe("Planilhas por instrumento", () => {
     const result = await workbookController(
       new Request("http://localhost/api/workbooks", {
         method: "POST",
+        headers: { origin: "http://localhost" },
         body: form,
       }),
     );
@@ -231,6 +242,7 @@ describe("Planilhas por instrumento", () => {
     const result = await workbookController(
       new Request("http://localhost/api/workbooks", {
         method: "POST",
+        headers: { origin: "http://localhost" },
         body: form,
       }),
     );
