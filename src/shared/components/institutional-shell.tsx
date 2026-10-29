@@ -39,16 +39,18 @@ export function InstitutionalHeader({
           </div>
         </div>
       </header>
-      <div className="panel-bar container">
-        <Link className="product-brand" href="/">
-          Pinda Coletor<span aria-hidden="true">.</span>
-        </Link>
-        {userName ? (
-          <SessionControls name={userName} />
-        ) : (
-          <span className="environment">Integrações municipais</span>
-        )}
-      </div>
+      {!guest && (
+        <div className="panel-bar container">
+          <Link className="product-brand" href="/">
+            Pinda Coletor<span aria-hidden="true">.</span>
+          </Link>
+          {userName ? (
+            <SessionControls name={userName} />
+          ) : (
+            <span className="environment">Integrações municipais</span>
+          )}
+        </div>
+      )}
       {!guest && (
         <div className="panel-nav-band">
           <nav className="container panel-nav" aria-label="Navegação principal">

@@ -7,7 +7,7 @@ export function LoginButton({ enabled }: { enabled: boolean }) {
   return (
     <>
       <button
-        className="button primary"
+        className="button"
         disabled={!enabled || busy}
         onClick={async () => {
           setBusy(true);
@@ -28,10 +28,10 @@ export function LoginButton({ enabled }: { enabled: boolean }) {
           }
         }}
       >
-        {busy ? "Redirecionando…" : "Entrar com a conta institucional"}
+        {busy ? "Redirecionando…" : "Login"}
       </button>
       {error && (
-        <p className="form-error" role="alert">
+        <p className="welcome-alert" role="alert">
           {error}
         </p>
       )}

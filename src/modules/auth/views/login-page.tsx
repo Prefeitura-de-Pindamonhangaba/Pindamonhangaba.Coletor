@@ -13,40 +13,53 @@ export function LoginPage({
   return (
     <div className="shell">
       <InstitutionalHeader guest />
-      <main id="importacao" className="login-layout">
-        <section className="login-introduction">
-          <span className="eyebrow">ACESSO INSTITUCIONAL</span>
-          <h1>
-            Pinda Coletor<span>.</span>
+      <main id="importacao" className="welcome-layout" tabIndex={-1}>
+        <section className="welcome-hero" aria-labelledby="welcome-title">
+          <span className="eyebrow">Dados a serviço da cidade</span>
+          <h1 id="welcome-title">
+            Pinda Coletor<span aria-hidden="true">.</span>
           </h1>
-          <p>Coleta de dados para a gestão municipal.</p>
-          <p>
-            Entre com sua conta institucional para importar planilhas e
-            gerenciar suas chaves de integração.
+          <p className="introduction">
+            Coleta de dados para a gestão municipal.
           </p>
-        </section>
-        <section className="login-panel">
-          <h2>Entrar no sistema</h2>
-          <p>Use a mesma identidade institucional utilizada no Pinda Dados.</p>
-          <LoginButton enabled={configured} />
-          {!configured && (
-            <p className="notice">
-              O login Keycloak ainda não está configurado. O administrador deve
-              preencher as variáveis de autenticação no servidor e habilitar o
-              acesso.
+          <p className="welcome-description">
+            Uma plataforma para importar planilhas, organizar informações e
+            simplificar o envio de dados aos sistemas municipais.
+          </p>
+          <div className="welcome-access">
+            <LoginButton enabled={configured} />
+            <p>Entre com sua conta institucional da Prefeitura.</p>
+          </div>
+          {(!configured || hasError) && (
+            <p className="welcome-alert" role="alert">
+              {!configured
+                ? "O acesso institucional está indisponível. Entre em contato com o DSI."
+                : "Acesso institucional não autorizado ou indisponível. Entre em contato com o DSI."}
             </p>
           )}
-          {hasError && (
-            <p className="form-error" role="alert">
-              Não foi possível concluir o acesso. Confira com o administrador se
-              sua conta está habilitada e vinculada ao Keycloak.
-            </p>
-          )}
-          <p className="field-help">
-            A autenticação acontece no Keycloak. Sua senha não é solicitada nem
-            armazenada pelo coletor.
-          </p>
         </section>
+        <aside className="welcome-details" aria-label="Sobre a plataforma">
+          <div>
+            <span className="eyebrow">01 · Integração</span>
+            <h2>Dados organizados para envio</h2>
+            <p>
+              Planilhas por instrumento, com conferência das informações antes
+              do envio ao sistema de destino.
+            </p>
+          </div>
+          <div>
+            <span className="eyebrow">02 · Segurança</span>
+            <h2>Suas chaves, seu acesso</h2>
+            <p>
+              Conta institucional e chaves de integração pessoais, protegidas e
+              selecionadas a cada envio.
+            </p>
+          </div>
+          <p className="welcome-notice">
+            Uso exclusivo de servidores autorizados, para finalidades
+            administrativas. Para solicitar acesso, entre em contato com o DSI.
+          </p>
+        </aside>
       </main>
       <InstitutionalFooter />
     </div>
