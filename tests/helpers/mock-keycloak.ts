@@ -13,6 +13,7 @@ export async function createMockKeycloak(port = 0) {
     sub: randomUUID(),
     email: "mock@test.invalid",
     verified: true,
+    roles: ["operator"] as string[],
   };
   const codes = new Map<
     string,
@@ -23,6 +24,7 @@ export async function createMockKeycloak(port = 0) {
       profile: typeof current;
     }
   >();
+  const refreshTokens = new Map<string, string>();
   let exchanges = 0;
   const server = Bun.serve({
     hostname: "127.0.0.1",
@@ -73,19 +75,32 @@ export async function createMockKeycloak(port = 0) {
       }
       if (url.pathname.endsWith("/token")) {
         const body = new URLSearchParams(await request.text());
+        const refresh = body.get("grant_type") === "refresh_token";
+        const refreshSubject = refreshTokens.get(
+          body.get("refresh_token") ?? "",
+        );
         const code = body.get("code") ?? "";
-        const data = codes.get(code);
+        const data =
+          refresh && refreshSubject === current.sub
+            ? { nonce: undefined, profile: current }
+            : codes.get(code);
         codes.delete(code);
         if (
           !data ||
-          createHash("sha256")
-            .update(body.get("code_verifier") ?? "")
-            .digest("base64url") !== data.challenge ||
-          body.get("redirect_uri") !== data.redirect
+          (!refresh &&
+            (createHash("sha256")
+              .update(body.get("code_verifier") ?? "")
+              .digest("base64url") !==
+              (data as { challenge: string }).challenge ||
+              body.get("redirect_uri") !==
+                (data as { redirect: string }).redirect))
         )
           return Response.json({ error: "invalid_grant" }, { status: 400 });
         exchanges++;
+        const refreshToken = randomUUID();
+        refreshTokens.set(refreshToken, data.profile.sub);
         const idToken = await new SignJWT({
+          resource_access: { "coletor-test": { roles: data.profile.roles } },
           email: data.profile.email,
           email_verified: data.profile.verified,
           name: "Usuário OIDC de teste",
@@ -100,7 +115,7 @@ export async function createMockKeycloak(port = 0) {
           .sign(keys.privateKey);
         return Response.json({
           access_token: "mock-access-token",
-          refresh_token: "mock-refresh-token",
+          refresh_token: refreshToken,
           id_token: idToken,
           expires_in: 300,
           token_type: "Bearer",
@@ -112,8 +127,10 @@ export async function createMockKeycloak(port = 0) {
   });
   return {
     issuer: `http://127.0.0.1:${server.port}/realms/coletor-test`,
-    setProfile: (profile: typeof current) => {
-      current = profile;
+    setProfile: (
+      profile: Omit<typeof current, "roles"> & { roles?: string[] },
+    ) => {
+      current = { ...profile, roles: profile.roles ?? ["operator"] };
     },
     exchanges: () => exchanges,
     stop: () => server.stop(true),

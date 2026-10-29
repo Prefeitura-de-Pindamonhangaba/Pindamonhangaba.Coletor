@@ -1,8 +1,10 @@
 "use client";
+import { useHydrated } from "../../../shared/lib/auth/use-hydrated";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "../../../shared/lib/auth/client";
 export function SessionControls({ name }: { name: string }) {
+  const hydrated = useHydrated();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -12,7 +14,7 @@ export function SessionControls({ name }: { name: string }) {
       <div>
         <button
           className="text-button"
-          disabled={busy}
+          disabled={busy || !hydrated}
           onClick={async () => {
             setBusy(true);
             setError("");

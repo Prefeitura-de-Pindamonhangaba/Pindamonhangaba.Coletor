@@ -1,14 +1,16 @@
 "use client";
+import { useHydrated } from "../../../shared/lib/auth/use-hydrated";
 import { useState } from "react";
 import { authClient } from "../../../shared/lib/auth/client";
 export function LoginButton({ enabled }: { enabled: boolean }) {
+  const hydrated = useHydrated();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   return (
     <>
       <button
         className="button"
-        disabled={!enabled || busy}
+        disabled={!enabled || busy || !hydrated}
         onClick={async () => {
           setBusy(true);
           setError("");
@@ -16,7 +18,7 @@ export function LoginButton({ enabled }: { enabled: boolean }) {
             const result = await authClient.signIn.social({
               provider: "keycloak",
               callbackURL: "/",
-              errorCallbackURL: "/login?error=auth",
+              errorCallbackURL: "/login?sso=error",
             });
             if (result.error) {
               setError("Não foi possível iniciar o login institucional.");
