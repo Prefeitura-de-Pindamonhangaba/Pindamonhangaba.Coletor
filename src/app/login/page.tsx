@@ -22,10 +22,11 @@ export default async function Page({
     configured = false;
   }
   if (signedIn) redirect("/");
+  const query = await searchParams;
   return (
     <LoginPage
       configured={configured}
-      hasError={!!(await searchParams).error}
+      hasError={!!query.error || query.sso === "error"}
     />
   );
 }

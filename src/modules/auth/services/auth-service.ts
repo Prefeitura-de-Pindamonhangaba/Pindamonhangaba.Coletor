@@ -1,3 +1,5 @@
+import { parseKeycloakIdentity } from "./keycloak-identity";
+import { createKeycloakIdentityRepository } from "../models/keycloak-identity-repository";
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { genericOAuth, keycloak } from "better-auth/plugins/generic-oauth";
@@ -14,6 +16,7 @@ export function createAuthService(
   database: Database,
   env: ReturnType<typeof parseAuthEnvironment>,
 ) {
+  const identities = createKeycloakIdentityRepository(database);
   return betterAuth({
     appName: "Pinda Coletor",
     baseURL: env.APP_URL,
@@ -39,12 +42,40 @@ export function createAuthService(
                   clientId: env.keycloak.clientId,
                   clientSecret: env.keycloak.clientSecret,
                   pkce: true,
+                  scopes: ["openid", "profile"],
                   disableSignUp: true,
                   disableImplicitSignUp: true,
                   overrideUserInfo: false,
                   disableProviderLogout: true,
                 }),
                 requireIdTokenVerification: true,
+                requireEmailVerification: false,
+                getUserInfo: async (tokens) => {
+                  if (!tokens.idToken || !env.keycloak.enabled) return null;
+                  // O SDK verifica assinatura, issuer, audience e nonce antes desta callback.
+                  const raw: unknown = JSON.parse(
+                    Buffer.from(
+                      tokens.idToken.split(".")[1]!,
+                      "base64url",
+                    ).toString("utf8"),
+                  );
+                  const identity = parseKeycloakIdentity(
+                    raw,
+                    env.keycloak.issuer,
+                    env.keycloak.clientId,
+                  );
+                  if (!identity) return null;
+                  const local = await identities.synchronize(identity);
+                  return {
+                    iss: env.keycloak.issuer,
+                    sub: identity.subject,
+                    pindaRole: identity.role,
+                    id: identity.subject,
+                    name: local.name,
+                    email: local.email,
+                    emailVerified: local.emailVerified,
+                  };
+                },
                 accountSubject: ({ profile }) =>
                   keycloakAccountId(
                     env.keycloak.enabled ? env.keycloak.issuer : "",
@@ -65,17 +96,19 @@ export function createAuthService(
       validateUserInfo: ({ source }) => {
         if (source.oauth?.providerId !== "keycloak") return;
         const profile = source.oauth.profile;
-        if (
-          !env.keycloak.enabled ||
-          profile?.iss !== env.keycloak.issuer ||
-          profile?.email_verified !== true
-        )
+        if (!env.keycloak.enabled || profile?.iss !== env.keycloak.issuer)
           return {
             error: "access_denied",
             errorDescription: "Acesso institucional não autorizado.",
           };
       },
       additionalFields: {
+        role: {
+          type: "string",
+          required: true,
+          defaultValue: "viewer",
+          input: false,
+        },
         enabled: {
           type: "boolean",
           required: true,

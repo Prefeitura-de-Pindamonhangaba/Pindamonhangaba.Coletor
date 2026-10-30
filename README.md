@@ -41,7 +41,7 @@ docker compose -f compose.production.yml up -d
 
 Esse arquivo é independente: **não combine com `compose.yml`**, pois o padrão contém o banco local. Produção inicia apenas a aplicação, compilada, com usuário não privilegiado. `DATABASE_EXTERNAL=true` é obrigatório. O Compose recusa `DATABASE_URL` ausente/vazia; a aplicação também valida o formato com Zod e executa `SELECT 1` antes de abrir o servidor. Se a configuração ou conexão falhar, o processo encerra com mensagem sem credenciais. O healthcheck verifica aplicação e banco.
 
-O serviço publica somente em localhost; configure proxy HTTPS para acesso externo. Use cliente Keycloak e banco próprios do Coletor, no mesmo realm institucional do DadosPinda. Gere os dois segredos conforme `.env.example`, aplique as migrações e vincule os usuários autorizados seguindo [o guia de configuração](docs/autenticacao-e-chaves.md). Produção não executa migrações automaticamente.
+O serviço publica somente em localhost; configure proxy HTTPS para acesso externo. Use cliente Keycloak e banco próprios do Coletor, no mesmo realm institucional do DadosPinda. Gere os dois segredos conforme `.env.example`, aplique as migrações e atribua os papéis do cliente aos usuários autorizados seguindo [o guia de configuração](docs/autenticacao-e-chaves.md). Produção não executa migrações automaticamente.
 
 ## Executar sem Docker
 

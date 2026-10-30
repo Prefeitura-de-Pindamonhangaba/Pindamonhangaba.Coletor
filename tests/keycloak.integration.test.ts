@@ -9,6 +9,8 @@ import {
   parseAuthEnvironment,
   keycloakAccountId,
 } from "../src/modules/auth/services/keycloak-config";
+import { createKeycloakSessionService } from "../src/modules/auth/services/keycloak-session-service";
+import { createKeycloakIdentityRepository } from "../src/modules/auth/models/keycloak-identity-repository";
 import { user, account } from "../src/modules/auth/models/auth-schema";
 
 describe.skipIf(!process.env.TEST_DATABASE_URL)(
@@ -18,6 +20,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
     let connection: ReturnType<typeof createDatabase>;
     let server: ReturnType<typeof Bun.serve>;
     let origin: string;
+    let auth: ReturnType<typeof createAuthService>;
     const subject = randomUUID(),
       userId = randomUUID(),
       email = `${randomUUID()}@test.invalid`;
@@ -33,7 +36,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
     const cookieHeader = (jar: Map<string, string>) =>
       [...jar].map(([key, value]) => `${key}=${value}`).join("; ");
     async function login(
-      profile = { sub: subject, email, verified: true },
+      profile = { sub: subject, email, verified: true, roles: ["operator"] },
       tamperState = false,
     ) {
       idp.setProfile(profile);
@@ -97,10 +100,7 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         KEYCLOAK_CLIENT_ID: "coletor-test",
         KEYCLOAK_CLIENT_SECRET: "mock-only",
       });
-      const auth: ReturnType<typeof createAuthService> = createAuthService(
-        connection.database,
-        env,
-      );
+      auth = createAuthService(connection.database, env);
       await connection.database.insert(user).values({
         id: userId,
         email,
@@ -128,6 +128,17 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         .from(account)
         .where(eq(account.userId, userId));
       expect(storedAccount?.accessToken).not.toBe("mock-access-token");
+      let now = Date.now();
+      const sessions = createKeycloakSessionService(
+        auth,
+        createKeycloakIdentityRepository(connection.database),
+        () => now,
+      );
+      const headers = new Headers({ cookie: cookieHeader(result.jar) });
+      expect((await sessions.getPrincipal(headers))?.role).toBe("operator");
+      idp.setProfile({ sub: subject, email, verified: true, roles: ["admin"] });
+      now += 60_001;
+      expect((await sessions.getPrincipal(headers))?.role).toBe("admin");
       const logout = await fetch(`${origin}/api/auth/sign-out`, {
         method: "POST",
         headers: {
@@ -142,23 +153,56 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
         headers: { cookie: cookieHeader(result.jar) },
       });
       expect(await reused.json()).toBeNull();
+      expect(await sessions.getPrincipal(headers)).toBeNull();
     });
-    test("não cadastra nem vincula automaticamente outro subject com o mesmo e-mail", async () => {
-      const result = await login({ sub: randomUUID(), email, verified: true });
-      expect(result.session).toBeNull();
-    });
-    test("rejeita e-mail não verificado e state alterado", async () => {
+    test("provisiona outro subject com papel sem vincular pelo mesmo e-mail", async () => {
+      const otherSubject = randomUUID();
+      const result = await login({
+        sub: otherSubject,
+        email,
+        verified: true,
+        roles: ["viewer"],
+      });
+      expect(result.session?.user?.id).toBeTruthy();
+      expect(result.session?.user?.id).not.toBe(userId);
+      const sessions = createKeycloakSessionService(
+        auth,
+        createKeycloakIdentityRepository(connection.database),
+      );
+      idp.setProfile({
+        sub: otherSubject,
+        email,
+        verified: true,
+        roles: [],
+      });
       expect(
-        (await login({ sub: subject, email, verified: false })).session,
+        await sessions.getPrincipal(
+          new Headers({ cookie: cookieHeader(result.jar) }),
+        ),
       ).toBeNull();
+      const revoked = await auth.api.getSession({
+        headers: new Headers({ cookie: cookieHeader(result.jar) }),
+      });
+      expect(revoked).toBeNull();
+    });
+    test("e-mail não é identidade e state alterado continua rejeitado", async () => {
+      expect(
+        (
+          await login({
+            sub: subject,
+            email,
+            verified: false,
+            roles: ["operator"],
+          })
+        ).session?.user?.id,
+      ).toBe(userId);
       expect((await login(undefined, true)).session).toBeNull();
     });
-    test("usuário desativado não consegue abrir sessão", async () => {
-      await connection.database
-        .update(user)
-        .set({ enabled: false })
-        .where(eq(user.id, userId));
-      expect((await login()).session).toBeNull();
+    test("rejeita usuário sem papel do cliente mesmo com vínculo local", async () => {
+      expect(
+        (await login({ sub: subject, email, verified: true, roles: [] }))
+          .session,
+      ).toBeNull();
     });
     test("limita tentativas repetidas de login", async () => {
       const response = await fetch(`${origin}/api/auth/sign-in/social`, {
